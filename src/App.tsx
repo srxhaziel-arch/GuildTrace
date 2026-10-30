@@ -11,6 +11,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 import { supabase } from '@/lib/supabase';
 
 type Guild = { name: string };
@@ -568,6 +569,7 @@ function App() {
         </section>
       </main>
       {notice && <div className="toast">{notice}</div>}
+      <Analytics />
     </div>
   );
 }
