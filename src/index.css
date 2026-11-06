@@ -682,7 +682,6 @@ th, td { padding: 14px 20px; }
 .guild-row { display: inline-flex; gap: 7px; padding: 6px 10px; max-width: 100%; border: 1px solid #2b3744; border-radius: 7px; background: #17212c; font-size: 11px; line-height: 1.45; }
 .guild-row i { width: 5px; height: 5px; flex-shrink: 0; box-shadow: 0 0 7px #d4ad4c25; }
 .guild-row strong { font-weight: 500; }
-.search-match { padding: 1px 2px; border-radius: 3px; background: #d4ad4c2b; color: #ffe095; font-weight: 700; box-decoration-break: clone; }
 .search-wrap { transition: border-color 160ms ease, box-shadow 160ms ease; }
 .search-wrap:focus-within { border-color: #d4ad4c80; box-shadow: 0 0 0 3px #d4ad4c0c; }
 :is(.primary-button, .secondary-button, .clear-button, .add-guild, .toolbar .delete-button) { min-height: 36px; height: auto; border-radius: 8px; padding: 8px 12px; gap: 7px; font-size: 12px; font-weight: 600; line-height: 1.25; transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease; }

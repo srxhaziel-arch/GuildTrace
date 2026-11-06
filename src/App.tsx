@@ -28,26 +28,6 @@ function toDbGuilds(guilds: Guild[]) {
   }));
 }
 
-function HighlightedText({ text, query }: { text: string; query: string }) {
-  const term = query.trim();
-  if (!term) return <>{text}</>;
-  const segments: { value: string; match: boolean }[] = [];
-  const lowerText = text.toLowerCase();
-  const lowerTerm = term.toLowerCase();
-  let start = 0;
-  let match = lowerText.indexOf(lowerTerm);
-  while (match !== -1) {
-    if (match > start) segments.push({ value: text.slice(start, match), match: false });
-    segments.push({ value: text.slice(match, match + term.length), match: true });
-    start = match + term.length;
-    match = lowerText.indexOf(lowerTerm, start);
-  }
-  if (start < text.length) segments.push({ value: text.slice(start), match: false });
-  return <>{segments.map((segment, index) => segment.match
-    ? <mark className="search-match" key={index}>{segment.value}</mark>
-    : <span key={index}>{segment.value}</span>)}</>;
-}
-
 function LoadingMaps() {
   return (
     <div className="loading-maps" role="status" aria-label="Cargando mapas">
@@ -545,7 +525,7 @@ function App() {
                         </td>
                       )}
                       <td className="map-cell">
-                        <strong><HighlightedText text={item.map} query={search} /></strong>
+                        <strong>{item.map}</strong>
                         <span className="guild-count">
                           {item.visibleGuilds.length < item.guilds.length
                             ? `${item.visibleGuilds.length} de ${item.guilds.length} gremios`
@@ -557,7 +537,7 @@ function App() {
                           {item.visibleGuilds.map((guild, index) => (
                             <div className="guild-row" key={`${guild.name}-${index}`}>
                               <i />
-                              <strong><HighlightedText text={guild.name} query={search} /></strong>
+                              <strong>{guild.name}</strong>
                             </div>
                           ))}
                         </div>
