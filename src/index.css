@@ -616,3 +616,56 @@ tbody tr:last-child td {
     font-size: 11px;
   }
 }
+
+/* Controles de consulta y estado */
+button:disabled { cursor: not-allowed; opacity: .5; }
+.connection-status { display: flex; align-items: center; gap: 7px; color: #81cda1; font-size: 12px; }
+.connection-status span { display: inline-flex; align-items: center; gap: 5px; }
+.connection-warning { color: #edbf69; }
+.connection-banner { margin-top: 16px; padding: 14px 18px; border: 1px solid #806427; border-radius: 10px; background: #292217; color: #edcf91; font-size: 13px; display: flex; align-items: center; gap: 16px; justify-content: space-between; }
+.toolbar { flex-wrap: wrap; }
+.search-wrap { min-width: 220px; }
+.filter-control { display: flex; flex-direction: column; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 700; }
+.filter-control select { min-height: 38px; padding: 0 28px 0 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--text); background: var(--bg); font-size: 12px; }
+.results-count { flex-basis: 100%; }
+.table-wrap { max-height: 70vh; overflow: auto; scrollbar-color: var(--line) var(--bg); }
+thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-raised); }
+.guild-count { display: block; width: fit-content; margin-top: 9px; border-radius: 5px; background: #d4ad4c12; color: var(--gold); padding: 3px 7px; font-size: 10px; }
+.map-cell strong, .guild-row strong { overflow-wrap: anywhere; }
+.editor-fields { margin: 0; padding: 0; min-width: 0; border: 0; }
+.form-status { margin: 14px 0 0; font-size: 12px; color: var(--gold); }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+@media (max-width: 620px) {
+  .topbar { gap: 14px; height: auto; min-height: 76px; padding: 14px 0; flex-wrap: wrap; }
+  .connection-status { font-size: 11px; flex-wrap: wrap; }
+  .connection-banner { flex-direction: column; align-items: start; }
+  .search-wrap { flex-basis: 100%; min-width: 0; }
+  .filter-control { flex: 1 1 calc(50% - 10px); min-width: 0; }
+  .filter-control select { width: 100%; min-height: 44px; }
+  .results-count { display: block; line-height: 1.5; }
+  .table-wrap { max-height: none; overflow: visible; padding: 12px; }
+  table, tbody { display: block; width: 100%; min-width: 0; }
+  thead { display: none; }
+  .map-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; padding: 18px; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  .map-row td { display: block; padding: 0; border: 0; width: auto; min-width: 0; }
+  .map-row .map-cell { grid-column: 1; grid-row: 1; }
+  .map-cell strong { font-size: 15px; }
+  .map-row td:has(> .guild-list) { grid-column: 1 / -1; }
+  .guild-list { flex-direction: row; flex-wrap: wrap; gap: 8px; }
+  .guild-row { background: var(--surface-raised); border-radius: 6px; padding: 8px 10px; max-width: 100%; }
+  .guild-row i { flex-shrink: 0; }
+  .map-row .actions-cell { grid-column: 1 / -1; }
+  .action-edit-btn { min-height: 44px; width: 100%; font-size: 13px; }
+  .map-row .checkbox-col { grid-column: 2; grid-row: 1; padding: 4px; }
+  .checkbox-col input[type="checkbox"] { width: 24px; height: 24px; }
+  .inline-editor-row, .inline-editor-row > td { display: block; padding: 0; border: 0; }
+  .inline-editor-row { margin-bottom: 16px; }
+  .editor-grid input { min-height: 44px; font-size: 16px; }
+  .editor-title .clear-button { font-size: 11px; }
+  .editor-title { flex-wrap: wrap; gap: 12px; }
+  .primary-button, .clear-button, .add-guild, .remove-button { min-height: 44px; }
+  .editor-actions { flex-wrap: wrap; }
+  .editor-actions .primary-button { flex: 1; justify-content: center; }
+  .toast { left: 14px; right: 14px; bottom: 14px; }
+}

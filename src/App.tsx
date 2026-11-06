@@ -1,5 +1,8 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Check,
+  Wifi,
+  WifiOff,
   Loader2,
   Pencil,
   Plus,
@@ -37,17 +40,53 @@ function App() {
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [selectMode, setSelectMode] = useState(false);
+  const [guildFilter, setGuildFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('name');
+  const [online, setOnline] = useState(navigator.onLine);
+  const [dataError, setDataError] = useState(false);
+  const [live, setLive] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+  const [deleting, setDeleting] = useState(false);
+  const [formBaseline, setFormBaseline] = useState(JSON.stringify(['', [{ name: '' }]]));
+  const dirty = JSON.stringify([mapName, guilds]) !== formBaseline;
+  const busy = saving || deleting;
+
+  useEffect(() => {
+    const sync = () => setOnline(navigator.onLine);
+    window.addEventListener('online', sync);
+    window.addEventListener('offline', sync);
+    return () => {
+      window.removeEventListener('online', sync);
+      window.removeEventListener('offline', sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!dirty && !busy) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty, busy]);
 
   const filteredData = useMemo(() => {
-    const sorted = [...data].sort((a, b) => a.map.localeCompare(b.map, 'es', { sensitivity: 'base' }));
     const query = search.trim().toLowerCase();
-    if (!query) return sorted;
-    return sorted.filter(
-      (item) =>
-        item.map.toLowerCase().includes(query) ||
-        item.guilds.some((guild) => guild.name.toLowerCase().includes(query)),
+    return data.filter((item) => {
+      const matchesSearch = item.map.toLowerCase().includes(query) ||
+        item.guilds.some((guild) => guild.name.toLowerCase().includes(query));
+      const count = item.guilds.length;
+      const matchesCount = guildFilter === 'all' ||
+        (guildFilter === 'single' && count === 1) ||
+        (guildFilter === 'multiple' && count >= 2 && count <= 4) ||
+        (guildFilter === 'many' && count >= 5);
+      return matchesSearch && matchesCount;
+    }).sort((a, b) =>
+      (sortBy === 'guilds' ? b.guilds.length - a.guilds.length : 0) ||
+      a.map.localeCompare(b.map, 'es', { sensitivity: 'base' }),
     );
-  }, [data, search]);
+  }, [data, search, guildFilter, sortBy]);
 
   const loadAll = useCallback(async () => {
     const { data: rows, error } = await supabase
@@ -55,7 +94,8 @@ function App() {
       .select('map, guild_name, guild_type, lastEdited, radar');
 
     if (error) {
-      flash('No se pudieron cargar los datos de Supabase');
+      setDataError(true);
+      flash('No se pudieron actualizar los datos. Puedes reintentar.');
       return;
     }
 
@@ -89,6 +129,7 @@ function App() {
     });
 
     setData(grouped);
+    setDataError(false);
   }, []);
 
   useEffect(() => {
@@ -107,13 +148,18 @@ function App() {
           if (mounted) loadAll();
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (mounted) {
+          setLive(status === 'SUBSCRIBED');
+          if (status === 'SUBSCRIBED') void loadAll();
+        }
+      });
 
     return () => {
       mounted = false;
       supabase.removeChannel(channel);
     };
-  }, [loadAll]);
+  }, [loadAll, online]);
 
   useEffect(() => {
     document.documentElement.classList.add('dark');
@@ -124,19 +170,43 @@ function App() {
     window.setTimeout(() => setNotice(''), 4000);
   }
 
-  function resetForm() {
+  function clearForm() {
+    setFormBaseline(JSON.stringify(['', [{ name: '' }]]));
     setEditingMap(null);
     setMapName('');
     setGuilds([{ name: '' }]);
   }
 
+  function canLeaveForm() {
+    return !busy && (!dirty || window.confirm('Tienes cambios sin guardar. ¿Quieres descartarlos?'));
+  }
+
+  function resetForm() {
+    if (canLeaveForm()) {
+      clearForm();
+      setSaveStatus('idle');
+    }
+  }
+
+  function changeView(change: () => void) {
+    if (editingMap && !canLeaveForm()) return;
+    if (editingMap) clearForm();
+    change();
+  }
+
   function beginEdit(item: MapEntry) {
+    if (editingMap === item.id) return;
+    if (!canLeaveForm()) return;
+    const initialGuilds = item.guilds.length ? item.guilds : [{ name: '' }];
+    setFormBaseline(JSON.stringify([item.map, initialGuilds]));
+    setSaveStatus('idle');
     setEditingMap(item.id);
     setMapName(item.map);
     setGuilds(item.guilds.length ? item.guilds : [{ name: '' }]);
   }
 
   async function saveEntry() {
+    if (busy || !online) return;
     const name = mapName.trim();
     const cleanGuilds = toDbGuilds(guilds);
     if (!name || !cleanGuilds.length) {
@@ -144,6 +214,7 @@ function App() {
       return;
     }
     setSaving(true);
+    setSaveStatus('idle');
     const lastEdited = new Date().toLocaleString('es-ES');
 
     try {
@@ -176,43 +247,34 @@ function App() {
       if (insError) throw insError;
 
       flash(editingMap ? 'Mapa actualizado' : 'Mapa agregado');
-      resetForm();
+      clearForm();
+      setSaveStatus('saved');
       await loadAll();
     } catch {
-      flash('No se pudo guardar el mapa');
+      setSaveStatus('error');
+      flash('No se pudo guardar el mapa. Revisa la conexión antes de reintentar.');
     } finally {
       setSaving(false);
     }
   }
 
-  async function deleteEntry(entry: MapEntry) {
-    if (!window.confirm(`¿Eliminar "${entry.map}"?`)) return;
-    const { error } = await supabase
-      .from('mapas_hideouts')
-      .delete()
-      .eq('map', entry.map)
-      .eq('radar', RADAR_KEY);
-    if (error) {
-      flash('No se pudo eliminar el mapa');
-      return;
-    }
-    flash('Mapa eliminado');
-    await loadAll();
-  }
-
   async function deleteSelected() {
-    if (!selected.size) return;
+    if (!selected.size || busy || !online) return;
+    if (dirty && !canLeaveForm()) return;
     if (!window.confirm(`¿Eliminar ${selected.size} mapa(s) seleccionado(s)?`)) return;
+    setDeleting(true);
     const maps = Array.from(selected);
     const { error } = await supabase
       .from('mapas_hideouts')
       .delete()
       .in('map', maps)
       .eq('radar', RADAR_KEY);
+    setDeleting(false);
     if (error) {
       flash('No se pudieron eliminar los mapas');
       return;
     }
+    clearForm();
     flash(`${maps.length} mapa(s) eliminado(s)`);
     setSelected(new Set());
     setSelectMode(false);
@@ -234,7 +296,8 @@ function App() {
   }
 
   const editor = (
-    <section className="editor-card">
+    <section className="editor-card" aria-label={editingMap ? `Editar ${editingMap}` : 'Agregar mapa'}>
+      <fieldset disabled={busy} className="editor-fields">
       <div className="editor-title">
         <div>
           <div className="eyebrow">GESTIÓN DE DATOS</div>
@@ -287,14 +350,18 @@ function App() {
         </div>
       </div>
       <div className="editor-actions">
-        <button className="primary-button" onClick={saveEntry} disabled={saving}>
+        <button className="primary-button" onClick={saveEntry} disabled={busy || !online}>
           {saving ? <Loader2 size={17} className="spin" /> : <Plus size={17} />}{' '}
-          {editingMap ? 'Guardar cambios' : 'Agregar'}
+          {saving ? 'Guardando…' : editingMap ? 'Guardar cambios' : 'Agregar'}
         </button>
         <button className="clear-button" onClick={resetForm}>
           Limpiar
         </button>
       </div>
+      <p className="form-status" role="status">
+        {saving ? 'Guardando cambios…' : saveStatus === 'error' ? 'No se pudo guardar. Tus cambios siguen en el formulario.' : dirty ? 'Cambios sin guardar' : saveStatus === 'saved' ? 'Cambios guardados' : 'Completa los datos del mapa.'}
+      </p>
+      </fieldset>
     </section>
   );
 
@@ -311,7 +378,20 @@ function App() {
               <span className="brand-subtitle">{RADAR_NAME}</span>
             </div>
           </div>
+          <div className={`connection-status ${!online || dataError ? 'connection-warning' : ''}`} role="status">
+            {online ? <Wifi size={16} /> : <WifiOff size={16} />}
+            {!online ? 'Sin conexión' : dataError ? 'Error al actualizar' : live ? 'En vivo' : 'Conectando en vivo…'}
+            {saving && <span>· Guardando…</span>}
+            {!saving && dirty && <span>· Sin guardar</span>}
+            {!saving && !dirty && saveStatus === 'saved' && <span>· Guardado <Check size={13} /></span>}
+          </div>
         </header>
+        {(!online || dataError) && (
+          <div className="connection-banner" role="status">
+            <span>{!online ? 'Sin conexión. Conservamos tu edición abierta; no cierres esta pestaña. Guardar y eliminar estarán disponibles al reconectar.' : 'No se pudieron actualizar los mapas. Se muestran los últimos datos cargados.'}</span>
+            {online && <button className="secondary-button" onClick={() => void loadAll()}>Reintentar</button>}
+          </div>
+        )}
 
         <section className="page-heading">
           <div>
@@ -331,30 +411,48 @@ function App() {
               <Search size={18} />
               <input
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => changeView(() => setSearch(event.target.value))}
+                aria-label="Buscar mapa o gremio"
+                disabled={busy}
                 placeholder="Buscar mapa o gremio..."
               />
             </div>
+            <label className="filter-control">
+              Gremios por mapa
+              <select value={guildFilter} disabled={busy} onChange={(event) => changeView(() => setGuildFilter(event.target.value))}>
+                <option value="all">Todos</option>
+                <option value="single">1 gremio</option>
+                <option value="multiple">2–4 gremios</option>
+                <option value="many">5 o más gremios</option>
+              </select>
+            </label>
+            <label className="filter-control">
+              Ordenar por
+              <select value={sortBy} disabled={busy} onChange={(event) => changeView(() => setSortBy(event.target.value))}>
+                <option value="name">Nombre A–Z</option>
+                <option value="guilds">Más gremios</option>
+              </select>
+            </label>
             {selectMode ? (
               <>
                 <button
                   className="delete-button"
                   onClick={deleteSelected}
-                  disabled={selected.size === 0}
+                  disabled={selected.size === 0 || busy || !online}
                 >
-                  <Trash2 size={15} /> Eliminar ({selected.size})
+                  <Trash2 size={15} /> {deleting ? 'Eliminando…' : `Eliminar (${selected.size})`}
                 </button>
-                <button className="clear-button cancel-select-button" onClick={exitSelectMode}>
+                <button className="clear-button cancel-select-button" onClick={exitSelectMode} disabled={busy}>
                   <X size={15} /> Cancelar
                 </button>
               </>
             ) : (
-              <button className="secondary-button" onClick={() => setSelectMode(true)}>
+              <button className="secondary-button" onClick={() => { if (canLeaveForm()) { clearForm(); setSelectMode(true); } }} disabled={busy}>
                 <Trash2 size={15} /> Eliminar
               </button>
             )}
             <span className="results-count">
-              {loading ? 'Cargando...' : `${filteredData.length} resultados`}
+              {loading ? 'Cargando...' : `${filteredData.length} de ${data.length} mapas · ${filteredData.reduce((sum, item) => sum + item.guilds.length, 0)} gremios`}
             </span>
           </div>
           {selectMode && (
@@ -381,13 +479,14 @@ function App() {
                   {filteredData.map((item) => (
                     <Fragment key={item.id}>
                       <tr
-                        className={`${selectMode ? 'row-selectable' : ''} ${selected.has(item.id) ? 'row-selected' : ''}`}
-                        onClick={selectMode ? () => toggleSelection(item.id) : undefined}
+                        className={`map-row ${selectMode ? 'row-selectable' : ''} ${selected.has(item.id) ? 'row-selected' : ''}`}
+                        onClick={selectMode && !busy ? () => toggleSelection(item.id) : undefined}
                       >
                         {selectMode && (
                           <td className="checkbox-col">
                             <input
                               type="checkbox"
+                              disabled={busy}
                               aria-label={`Seleccionar ${item.map}`}
                               onClick={(event) => event.stopPropagation()}
                               checked={selected.has(item.id)}
@@ -397,6 +496,7 @@ function App() {
                         )}
                         <td className="map-cell">
                           <strong>{item.map}</strong>
+                          <span className="guild-count">{item.guilds.length} {item.guilds.length === 1 ? 'gremio' : 'gremios'}</span>
                         </td>
                         <td>
                           <div className="guild-list">
@@ -411,6 +511,7 @@ function App() {
                         <td className="actions-cell">
                           <button
                             className="secondary-button action-edit-btn"
+                            disabled={busy}
                             onClick={(event) => {
                               event.stopPropagation();
                               if (selectMode) toggleSelection(item.id);
@@ -435,10 +536,10 @@ function App() {
                   {!filteredData.length && (
                     <tr>
                       <td colSpan={selectMode ? 4 : 3} className="empty-state">
-                        <strong>{search ? 'No se encontraron resultados' : 'Todavía no hay mapas'}</strong>
+                        <strong>{dataError && !data.length ? 'No se pudieron cargar los mapas' : search || guildFilter !== 'all' ? 'No se encontraron resultados' : 'Todavía no hay mapas'}</strong>
                         <span>
-                          {search
-                            ? 'Prueba con otro término de búsqueda.'
+                          {dataError && !data.length ? 'Reintenta la carga desde el aviso superior.' : search || guildFilter !== 'all'
+                            ? 'Prueba con otro término o cambia el filtro de gremios.'
                             : 'Agrega tu primer mapa usando el formulario inferior.'}
                         </span>
                       </td>
@@ -450,7 +551,7 @@ function App() {
           </div>
         </section>
 
-        {!editingMap && editor}
+        {(!editingMap || !filteredData.some((item) => item.id === editingMap)) && editor}
       </main>
       {notice && <div className="toast">{notice}</div>}
     </div>

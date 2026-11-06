@@ -31,8 +31,6 @@ una base existente: una de ellas vacía los campos `tier`, `calidad` y `alliance
 - `npm run lint`: comprueba las reglas de ESLint.
 - `npm run preview`: sirve localmente la compilación de producción.
 
-Actualmente lint detecta una función `deleteEntry` sin uso en `src/App.tsx`.
-
 ## Despliegue
 
 El proyecto de Vercel está conectado al repositorio de GitHub. Los cambios de la rama
