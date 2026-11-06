@@ -1,7 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Check,
-  Wifi,
   WifiOff,
   Loader2,
   Pencil,
@@ -40,11 +39,8 @@ function App() {
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [selectMode, setSelectMode] = useState(false);
-  const [guildFilter, setGuildFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('name');
   const [online, setOnline] = useState(navigator.onLine);
   const [dataError, setDataError] = useState(false);
-  const [live, setLive] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
   const [deleting, setDeleting] = useState(false);
   const [formBaseline, setFormBaseline] = useState(JSON.stringify(['', [{ name: '' }]]));
@@ -73,25 +69,18 @@ function App() {
 
   const filteredData = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return data.filter((item) => {
-      const matchesSearch = item.map.toLowerCase().includes(query) ||
-        item.guilds.some((guild) => guild.name.toLowerCase().includes(query));
-      const count = item.guilds.length;
-      const matchesCount = guildFilter === 'all' ||
-        (guildFilter === 'single' && count === 1) ||
-        (guildFilter === 'multiple' && count >= 2 && count <= 4) ||
-        (guildFilter === 'many' && count >= 5);
-      return matchesSearch && matchesCount;
-    }).sort((a, b) =>
-      (sortBy === 'guilds' ? b.guilds.length - a.guilds.length : 0) ||
-      a.map.localeCompare(b.map, 'es', { sensitivity: 'base' }),
+    return data.filter((item) =>
+      item.map.toLowerCase().includes(query) ||
+      item.guilds.some((guild) => guild.name.toLowerCase().includes(query)),
     );
-  }, [data, search, guildFilter, sortBy]);
+  }, [data, search]);
 
   const loadAll = useCallback(async () => {
     const { data: rows, error } = await supabase
       .from('mapas_hideouts')
-      .select('map, guild_name, guild_type, lastEdited, radar');
+      // El id secuencial conserva el orden de inserción de los gremios, también al recargar.
+      .select('map, guild_name, guild_type, lastEdited, radar')
+      .order('id', { ascending: true });
 
     if (error) {
       setDataError(true);
@@ -124,10 +113,6 @@ function App() {
 
     grouped.sort((a, b) => a.map.localeCompare(b.map, 'es', { sensitivity: 'base' }));
 
-    grouped.forEach((mapEntry) => {
-      mapEntry.guilds.sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
-    });
-
     setData(grouped);
     setDataError(false);
   }, []);
@@ -150,7 +135,6 @@ function App() {
       )
       .subscribe((status) => {
         if (mounted) {
-          setLive(status === 'SUBSCRIBED');
           if (status === 'SUBSCRIBED') void loadAll();
         }
       });
@@ -378,13 +362,12 @@ function App() {
               <span className="brand-subtitle">{RADAR_NAME}</span>
             </div>
           </div>
-          <div className={`connection-status ${!online || dataError ? 'connection-warning' : ''}`} role="status">
-            {online ? <Wifi size={16} /> : <WifiOff size={16} />}
-            {!online ? 'Sin conexión' : dataError ? 'Error al actualizar' : live ? 'En vivo' : 'Conectando en vivo…'}
-            {saving && <span>· Guardando…</span>}
-            {!saving && dirty && <span>· Sin guardar</span>}
-            {!saving && !dirty && saveStatus === 'saved' && <span>· Guardado <Check size={13} /></span>}
-          </div>
+          {(!online || dataError || saving || dirty || saveStatus === 'saved') && (
+            <div className={`connection-status ${!online || dataError ? 'connection-warning' : ''}`} role="status">
+              {!online ? <WifiOff size={16} /> : saving ? <Loader2 size={16} className="spin" /> : !dirty && saveStatus === 'saved' ? <Check size={16} /> : null}
+              {!online ? 'Sin conexión' : dataError ? 'Error al actualizar' : saving ? 'Guardando…' : dirty ? 'Sin guardar' : 'Guardado'}
+            </div>
+          )}
         </header>
         {(!online || dataError) && (
           <div className="connection-banner" role="status">
@@ -417,22 +400,6 @@ function App() {
                 placeholder="Buscar mapa o gremio..."
               />
             </div>
-            <label className="filter-control">
-              Gremios por mapa
-              <select value={guildFilter} disabled={busy} onChange={(event) => changeView(() => setGuildFilter(event.target.value))}>
-                <option value="all">Todos</option>
-                <option value="single">1 gremio</option>
-                <option value="multiple">2–4 gremios</option>
-                <option value="many">5 o más gremios</option>
-              </select>
-            </label>
-            <label className="filter-control">
-              Ordenar por
-              <select value={sortBy} disabled={busy} onChange={(event) => changeView(() => setSortBy(event.target.value))}>
-                <option value="name">Nombre A–Z</option>
-                <option value="guilds">Más gremios</option>
-              </select>
-            </label>
             {selectMode ? (
               <>
                 <button
@@ -536,10 +503,10 @@ function App() {
                   {!filteredData.length && (
                     <tr>
                       <td colSpan={selectMode ? 4 : 3} className="empty-state">
-                        <strong>{dataError && !data.length ? 'No se pudieron cargar los mapas' : search || guildFilter !== 'all' ? 'No se encontraron resultados' : 'Todavía no hay mapas'}</strong>
+                        <strong>{dataError && !data.length ? 'No se pudieron cargar los mapas' : search ? 'No se encontraron resultados' : 'Todavía no hay mapas'}</strong>
                         <span>
-                          {dataError && !data.length ? 'Reintenta la carga desde el aviso superior.' : search || guildFilter !== 'all'
-                            ? 'Prueba con otro término o cambia el filtro de gremios.'
+                          {dataError && !data.length ? 'Reintenta la carga desde el aviso superior.' : search
+                            ? 'Prueba con otro término de búsqueda.'
                             : 'Agrega tu primer mapa usando el formulario inferior.'}
                         </span>
                       </td>
