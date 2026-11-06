@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Check,
   WifiOff,
@@ -33,6 +33,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [editingMap, setEditingMap] = useState<string | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const editorDialog = useRef<HTMLDialogElement>(null);
   const [mapName, setMapName] = useState('');
   const [guilds, setGuilds] = useState<Guild[]>([{ name: '' }]);
   const [notice, setNotice] = useState('');
@@ -66,6 +68,18 @@ function App() {
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty, busy]);
+
+  useEffect(() => {
+    const dialog = editorDialog.current;
+    if (!editorOpen || !dialog) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    dialog.showModal();
+    return () => {
+      dialog.close();
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [editorOpen]);
 
   const filteredData = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -155,6 +169,7 @@ function App() {
   }
 
   function clearForm() {
+    setEditorOpen(false);
     setFormBaseline(JSON.stringify(['', [{ name: '' }]]));
     setEditingMap(null);
     setMapName('');
@@ -178,12 +193,24 @@ function App() {
     change();
   }
 
+  function beginAdd() {
+    if (!canLeaveForm()) return;
+    clearForm();
+    setSaveStatus('idle');
+    setNotice('');
+    setSelectMode(false);
+    setSelected(new Set());
+    setEditorOpen(true);
+  }
+
   function beginEdit(item: MapEntry) {
     if (editingMap === item.id) return;
     if (!canLeaveForm()) return;
     const initialGuilds = item.guilds.length ? item.guilds : [{ name: '' }];
     setFormBaseline(JSON.stringify([item.map, initialGuilds]));
     setSaveStatus('idle');
+    setEditorOpen(true);
+    setNotice('');
     setEditingMap(item.id);
     setMapName(item.map);
     setGuilds(item.guilds.length ? item.guilds : [{ name: '' }]);
@@ -282,69 +309,68 @@ function App() {
   const editor = (
     <section className="editor-card" aria-label={editingMap ? `Editar ${editingMap}` : 'Agregar mapa'}>
       <fieldset disabled={busy} className="editor-fields">
-      <div className="editor-title">
-        <div>
-          <div className="eyebrow">GESTIÓN DE DATOS</div>
-          <h2>{editingMap ? 'Editar mapa' : 'Agregar mapa'}</h2>
+        <div className="editor-title">
+          <div>
+            <div className="eyebrow">GESTIÓN DE DATOS</div>
+            <h2>{editingMap ? 'Editar mapa' : 'Agregar mapa'}</h2>
+          </div>
+          <button className="clear-button" onClick={resetForm} aria-label="Cerrar formulario">
+            <X size={15} /> Cerrar
+          </button>
         </div>
-        {editingMap && (
+        <div className="editor-grid">
+          <label>
+            Nombre del mapa
+            <input
+              value={mapName}
+              onChange={(event) => setMapName(event.target.value)}
+              placeholder="Ej. Avalancha Ravine"
+            />
+          </label>
+          <div>
+            <div className="field-label">Gremios</div>
+            {guilds.map((guild, index) => (
+              <div className="guild-input-row" key={index}>
+                <input
+                  value={guild.name}
+                  onChange={(event) =>
+                    setGuilds(
+                      guilds.map((item, itemIndex) =>
+                        itemIndex === index ? { ...item, name: event.target.value } : item,
+                      ),
+                    )
+                  }
+                  placeholder="Nombre del gremio"
+                />
+                {guilds.length > 1 && (
+                  <button
+                    className="remove-button"
+                    onClick={() => setGuilds(guilds.filter((_, itemIndex) => itemIndex !== index))}
+                    aria-label="Quitar gremio"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+            ))}
+            <button className="add-guild" onClick={() => setGuilds([...guilds, { name: '' }])}>
+              <Plus size={15} /> Agregar otro gremio
+            </button>
+          </div>
+        </div>
+        <div className="editor-actions">
+          <button className="primary-button" onClick={saveEntry} disabled={busy || !online}>
+            {saving ? <Loader2 size={17} className="spin" /> : <Plus size={17} />}{' '}
+            {saving ? 'Guardando…' : editingMap ? 'Guardar cambios' : 'Agregar'}
+          </button>
           <button className="clear-button" onClick={resetForm}>
-            <X size={15} /> Cancelar edición
-          </button>
-        )}
-      </div>
-      <div className="editor-grid">
-        <label>
-          Nombre del mapa
-          <input
-            value={mapName}
-            onChange={(event) => setMapName(event.target.value)}
-            placeholder="Ej. Avalancha Ravine"
-          />
-        </label>
-        <div>
-          <div className="field-label">Gremios</div>
-          {guilds.map((guild, index) => (
-            <div className="guild-input-row" key={index}>
-              <input
-                value={guild.name}
-                onChange={(event) =>
-                  setGuilds(
-                    guilds.map((item, itemIndex) =>
-                      itemIndex === index ? { ...item, name: event.target.value } : item,
-                    ),
-                  )
-                }
-                placeholder="Nombre del gremio"
-              />
-              {guilds.length > 1 && (
-                <button
-                  className="remove-button"
-                  onClick={() => setGuilds(guilds.filter((_, itemIndex) => itemIndex !== index))}
-                  aria-label="Quitar gremio"
-                >
-                  <X size={16} />
-                </button>
-              )}
-            </div>
-          ))}
-          <button className="add-guild" onClick={() => setGuilds([...guilds, { name: '' }])}>
-            <Plus size={15} /> Agregar otro gremio
+            Cancelar
           </button>
         </div>
-      </div>
-      <div className="editor-actions">
-        <button className="primary-button" onClick={saveEntry} disabled={busy || !online}>
-          {saving ? <Loader2 size={17} className="spin" /> : <Plus size={17} />}{' '}
-          {saving ? 'Guardando…' : editingMap ? 'Guardar cambios' : 'Agregar'}
-        </button>
-        <button className="clear-button" onClick={resetForm}>
-          Limpiar
-        </button>
-      </div>
-      <p className="form-status" role="status">
-        {saving ? 'Guardando cambios…' : saveStatus === 'error' ? 'No se pudo guardar. Tus cambios siguen en el formulario.' : dirty ? 'Cambios sin guardar' : saveStatus === 'saved' ? 'Cambios guardados' : 'Completa los datos del mapa.'}
-      </p>
+        <p className="form-status" role="status">
+          {!online ? 'Sin conexión. Tu edición sigue abierta; espera a reconectar para guardar.' : saving ? 'Guardando cambios…' : saveStatus === 'error' ? 'No se pudo guardar. Tus cambios siguen en el formulario.' : dirty ? 'Cambios sin guardar' : saveStatus === 'saved' ? 'Cambios guardados' : 'Completa los datos del mapa.'}
+        </p>
+        {notice && <p className="form-notice" role="alert">{notice}</p>}
       </fieldset>
     </section>
   );
@@ -382,9 +408,20 @@ function App() {
             <h1>{RADAR_NAME}</h1>
             <p>Consulta y organiza los gremios encontrados en cada mapa. Los cambios se ven al instante.</p>
           </div>
-          <div className="stat-card">
-            <span>MAPAS REGISTRADOS</span>
-            <strong>{data.length.toString().padStart(2, '0')}</strong>
+          <div className="heading-tools">
+            <div className="summary-stats" role="status" aria-label="Resumen de resultados">
+              <div className="stat-card">
+                <span>{search.trim() ? `MAPAS · DE ${data.length}` : 'MAPAS'}</span>
+                <strong>{loading ? '…' : filteredData.length}</strong>
+              </div>
+              <div className="stat-card">
+                <span>GREMIOS</span>
+                <strong>{loading ? '…' : filteredData.reduce((sum, item) => sum + item.guilds.length, 0)}</strong>
+              </div>
+            </div>
+            <button className="primary-button" onClick={beginAdd} disabled={busy} aria-haspopup="dialog" aria-controls="map-editor">
+              <Plus size={17} /> Agregar mapa
+            </button>
           </div>
         </section>
 
@@ -418,9 +455,6 @@ function App() {
                 <Trash2 size={15} /> Eliminar
               </button>
             )}
-            <span className="results-count">
-              {loading ? 'Cargando...' : `${filteredData.length} de ${data.length} mapas · ${filteredData.reduce((sum, item) => sum + item.guilds.length, 0)} gremios`}
-            </span>
           </div>
           {selectMode && (
             <p className="selection-hint">Pulsa en cualquier parte de una fila para seleccionar o quitar la selección del mapa.</p>
@@ -444,35 +478,35 @@ function App() {
                 </thead>
                 <tbody>
                   {filteredData.map((item) => (
-                    <Fragment key={item.id}>
-                      <tr
-                        className={`map-row ${selectMode ? 'row-selectable' : ''} ${selected.has(item.id) ? 'row-selected' : ''}`}
-                        onClick={selectMode && !busy ? () => toggleSelection(item.id) : undefined}
-                      >
-                        {selectMode && (
-                          <td className="checkbox-col">
-                            <input
-                              type="checkbox"
-                              disabled={busy}
-                              aria-label={`Seleccionar ${item.map}`}
-                              onClick={(event) => event.stopPropagation()}
-                              checked={selected.has(item.id)}
-                              onChange={() => toggleSelection(item.id)}
-                            />
-                          </td>
-                        )}
-                        <td className="map-cell">
-                          <strong>{item.map}</strong>
-                          <span className="guild-count">{item.guilds.length} {item.guilds.length === 1 ? 'gremio' : 'gremios'}</span>
+                    <tr
+                      key={item.id}
+                      className={`map-row ${selectMode ? 'row-selectable' : ''} ${selected.has(item.id) ? 'row-selected' : ''}`}
+                      onClick={selectMode && !busy ? () => toggleSelection(item.id) : undefined}
+                    >
+                      {selectMode && (
+                        <td className="checkbox-col">
+                          <input
+                            type="checkbox"
+                            disabled={busy}
+                            aria-label={`Seleccionar ${item.map}`}
+                            onClick={(event) => event.stopPropagation()}
+                            checked={selected.has(item.id)}
+                            onChange={() => toggleSelection(item.id)}
+                          />
                         </td>
-                        <td>
-                          <div className="guild-list">
-                            {item.guilds.map((guild, index) => (
-                              <div className="guild-row" key={`${guild.name}-${index}`}>
-                                <i />
-                                <strong>{guild.name}</strong>
-                              </div>
-                            ))}
+                      )}
+                      <td className="map-cell">
+                        <strong>{item.map}</strong>
+                        <span className="guild-count">{item.guilds.length} {item.guilds.length === 1 ? 'gremio' : 'gremios'}</span>
+                      </td>
+                      <td>
+                        <div className="guild-list">
+                          {item.guilds.map((guild, index) => (
+                            <div className="guild-row" key={`${guild.name}-${index}`}>
+                              <i />
+                              <strong>{guild.name}</strong>
+                            </div>
+                  ))}
                           </div>
                         </td>
                         <td className="actions-cell">
@@ -486,19 +520,14 @@ function App() {
                             }}
                             title={selectMode ? 'Seleccionar mapa para eliminar' : 'Editar mapa'}
                             aria-pressed={selectMode ? selected.has(item.id) : undefined}
-                            aria-expanded={selectMode ? undefined : editingMap === item.id}
-                            aria-controls={!selectMode && editingMap === item.id ? 'map-editor' : undefined}
+                            aria-haspopup={selectMode ? undefined : 'dialog'}
+                            aria-controls={selectMode ? undefined : 'map-editor'}
                           >
                             {selectMode ? (selected.has(item.id) ? 'Quitar selección' : 'Seleccionar') : <><Pencil size={13} /> Editar</>}
                           </button>
                         </td>
                       </tr>
-                      {editingMap === item.id && (
-                        <tr className="inline-editor-row" id="map-editor">
-                          <td colSpan={selectMode ? 4 : 3}>{editor}</td>
-                        </tr>
-                      )}
-                    </Fragment>
+
                   ))}
                   {!filteredData.length && (
                     <tr>
@@ -507,7 +536,7 @@ function App() {
                         <span>
                           {dataError && !data.length ? 'Reintenta la carga desde el aviso superior.' : search
                             ? 'Prueba con otro término de búsqueda.'
-                            : 'Agrega tu primer mapa usando el formulario inferior.'}
+                            : 'Pulsa «Agregar mapa» para registrar el primero.'}
                         </span>
                       </td>
                     </tr>
@@ -517,9 +546,16 @@ function App() {
             )}
           </div>
         </section>
-
-        {(!editingMap || !filteredData.some((item) => item.id === editingMap)) && editor}
       </main>
+      <dialog
+        ref={editorDialog}
+        id="map-editor"
+        className="map-editor-dialog"
+        aria-label={editingMap ? 'Editar mapa' : 'Agregar mapa'}
+        onCancel={(event) => { event.preventDefault(); resetForm(); }}
+      >
+        {editorOpen && editor}
+      </dialog>
       {notice && <div className="toast">{notice}</div>}
     </div>
   );
