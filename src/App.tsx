@@ -129,10 +129,13 @@ function App() {
 
   const filteredData = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return data.filter((item) =>
-      item.map.toLowerCase().includes(query) ||
-      item.guilds.some((guild) => guild.name.toLowerCase().includes(query)),
-    );
+    return data.flatMap((item) => {
+      const matchesMap = !query || item.map.toLowerCase().includes(query);
+      const visibleGuilds = matchesMap
+        ? item.guilds
+        : item.guilds.filter((guild) => guild.name.toLowerCase().includes(query));
+      return matchesMap || visibleGuilds.length ? [{ ...item, visibleGuilds }] : [];
+    });
   }, [data, search]);
 
   const loadAll = useCallback(async () => {
@@ -466,7 +469,7 @@ function App() {
               </div>
               <div className="stat-card">
                 <span>GREMIOS</span>
-                <strong>{loading ? '…' : filteredData.reduce((sum, item) => sum + item.guilds.length, 0)}</strong>
+                <strong>{loading ? '…' : filteredData.reduce((sum, item) => sum + item.visibleGuilds.length, 0)}</strong>
               </div>
             </div>
             <button className="primary-button" onClick={beginAdd} disabled={busy} aria-haspopup="dialog" aria-controls="map-editor">
@@ -543,11 +546,15 @@ function App() {
                       )}
                       <td className="map-cell">
                         <strong><HighlightedText text={item.map} query={search} /></strong>
-                        <span className="guild-count">{item.guilds.length} {item.guilds.length === 1 ? 'gremio' : 'gremios'}</span>
+                        <span className="guild-count">
+                          {item.visibleGuilds.length < item.guilds.length
+                            ? `${item.visibleGuilds.length} de ${item.guilds.length} gremios`
+                            : `${item.guilds.length} ${item.guilds.length === 1 ? 'gremio' : 'gremios'}`}
+                        </span>
                       </td>
                       <td>
                         <div className="guild-list">
-                          {item.guilds.map((guild, index) => (
+                          {item.visibleGuilds.map((guild, index) => (
                             <div className="guild-row" key={`${guild.name}-${index}`}>
                               <i />
                               <strong><HighlightedText text={guild.name} query={search} /></strong>
