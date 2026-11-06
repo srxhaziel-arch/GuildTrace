@@ -28,6 +28,52 @@ function toDbGuilds(guilds: Guild[]) {
   }));
 }
 
+function HighlightedText({ text, query }: { text: string; query: string }) {
+  const term = query.trim();
+  if (!term) return <>{text}</>;
+  const segments: { value: string; match: boolean }[] = [];
+  const lowerText = text.toLowerCase();
+  const lowerTerm = term.toLowerCase();
+  let start = 0;
+  let match = lowerText.indexOf(lowerTerm);
+  while (match !== -1) {
+    if (match > start) segments.push({ value: text.slice(start, match), match: false });
+    segments.push({ value: text.slice(match, match + term.length), match: true });
+    start = match + term.length;
+    match = lowerText.indexOf(lowerTerm, start);
+  }
+  if (start < text.length) segments.push({ value: text.slice(start), match: false });
+  return <>{segments.map((segment, index) => segment.match
+    ? <mark className="search-match" key={index}>{segment.value}</mark>
+    : <span key={index}>{segment.value}</span>)}</>;
+}
+
+function LoadingMaps() {
+  return (
+    <div className="loading-maps" role="status" aria-label="Cargando mapas">
+      <span className="sr-only">Cargando mapas y gremios…</span>
+      <table aria-hidden="true">
+        <thead><tr><th>MAPA</th><th>GREMIOS</th><th className="actions-header" /></tr></thead>
+        <tbody>
+          {Array.from({ length: 7 }, (_, index) => (
+            <tr className="skeleton-row" key={index}>
+              <td className="map-cell">
+                <span className="skeleton skeleton-name" />
+                <span className="skeleton skeleton-count" />
+              </td>
+              <td><div className="skeleton-guilds">
+                {Array.from({ length: index % 3 + 2 }, (_, guildIndex) =>
+                  <span className="skeleton skeleton-chip" key={guildIndex} />)}
+              </div></td>
+              <td className="actions-cell"><span className="skeleton skeleton-button" /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function App() {
   const [data, setData] = useState<MapEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -328,10 +374,12 @@ function App() {
             />
           </label>
           <div>
-            <div className="field-label">Gremios</div>
+            <div className="field-label">Gremios <span className="field-count">{guilds.length}</span></div>
+            <p className="field-hint">Se mostrarán en este mismo orden.</p>
             {guilds.map((guild, index) => (
               <div className="guild-input-row" key={index}>
                 <input
+                  aria-label={`Gremio ${index + 1}`}
                   value={guild.name}
                   onChange={(event) =>
                     setGuilds(
@@ -358,19 +406,21 @@ function App() {
             </button>
           </div>
         </div>
-        <div className="editor-actions">
-          <button className="primary-button" onClick={saveEntry} disabled={busy || !online}>
-            {saving ? <Loader2 size={17} className="spin" /> : <Plus size={17} />}{' '}
-            {saving ? 'Guardando…' : editingMap ? 'Guardar cambios' : 'Agregar'}
-          </button>
-          <button className="clear-button" onClick={resetForm}>
-            Cancelar
-          </button>
+        <div className="editor-footer">
+          <div className="editor-actions">
+            <button className="primary-button" onClick={saveEntry} disabled={busy || !online}>
+              {saving ? <Loader2 size={17} className="spin" /> : <Plus size={17} />}{' '}
+              {saving ? 'Guardando…' : editingMap ? 'Guardar cambios' : 'Agregar'}
+            </button>
+            <button className="clear-button" onClick={resetForm}>
+              Cancelar
+            </button>
+          </div>
+          <p className="form-status" role="status">
+            {!online ? 'Sin conexión. Tu edición sigue abierta; espera a reconectar para guardar.' : saving ? 'Guardando cambios…' : saveStatus === 'error' ? 'No se pudo guardar. Tus cambios siguen en el formulario.' : dirty ? 'Cambios sin guardar' : saveStatus === 'saved' ? 'Cambios guardados' : 'Completa los datos del mapa.'}
+          </p>
+          {notice && <p className="form-notice" role="alert">{notice}</p>}
         </div>
-        <p className="form-status" role="status">
-          {!online ? 'Sin conexión. Tu edición sigue abierta; espera a reconectar para guardar.' : saving ? 'Guardando cambios…' : saveStatus === 'error' ? 'No se pudo guardar. Tus cambios siguen en el formulario.' : dirty ? 'Cambios sin guardar' : saveStatus === 'saved' ? 'Cambios guardados' : 'Completa los datos del mapa.'}
-        </p>
-        {notice && <p className="form-notice" role="alert">{notice}</p>}
       </fieldset>
     </section>
   );
@@ -425,7 +475,7 @@ function App() {
           </div>
         </section>
 
-        <section className="content-card">
+        <section className="content-card" aria-busy={loading}>
           <div className="toolbar">
             <div className="search-wrap">
               <Search size={18} />
@@ -461,11 +511,7 @@ function App() {
           )}
           <div className="table-wrap">
             {loading ? (
-              <div className="empty-state">
-                <Loader2 size={34} className="spin" />
-                <strong>Cargando datos...</strong>
-                <span>Un momento por favor.</span>
-              </div>
+              <LoadingMaps />
             ) : (
               <table>
                 <thead>
@@ -496,7 +542,7 @@ function App() {
                         </td>
                       )}
                       <td className="map-cell">
-                        <strong>{item.map}</strong>
+                        <strong><HighlightedText text={item.map} query={search} /></strong>
                         <span className="guild-count">{item.guilds.length} {item.guilds.length === 1 ? 'gremio' : 'gremios'}</span>
                       </td>
                       <td>
@@ -504,30 +550,29 @@ function App() {
                           {item.guilds.map((guild, index) => (
                             <div className="guild-row" key={`${guild.name}-${index}`}>
                               <i />
-                              <strong>{guild.name}</strong>
+                              <strong><HighlightedText text={guild.name} query={search} /></strong>
                             </div>
-                  ))}
-                          </div>
-                        </td>
-                        <td className="actions-cell">
-                          <button
-                            className="secondary-button action-edit-btn"
-                            disabled={busy}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              if (selectMode) toggleSelection(item.id);
-                              else beginEdit(item);
-                            }}
-                            title={selectMode ? 'Seleccionar mapa para eliminar' : 'Editar mapa'}
-                            aria-pressed={selectMode ? selected.has(item.id) : undefined}
-                            aria-haspopup={selectMode ? undefined : 'dialog'}
-                            aria-controls={selectMode ? undefined : 'map-editor'}
-                          >
-                            {selectMode ? (selected.has(item.id) ? 'Quitar selección' : 'Seleccionar') : <><Pencil size={13} /> Editar</>}
-                          </button>
-                        </td>
-                      </tr>
-
+                          ))}
+                        </div>
+                      </td>
+                      <td className="actions-cell">
+                        <button
+                          className="secondary-button action-edit-btn"
+                          disabled={busy}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (selectMode) toggleSelection(item.id);
+                            else beginEdit(item);
+                          }}
+                          title={selectMode ? 'Seleccionar mapa para eliminar' : 'Editar mapa'}
+                          aria-pressed={selectMode ? selected.has(item.id) : undefined}
+                          aria-haspopup={selectMode ? undefined : 'dialog'}
+                          aria-controls={selectMode ? undefined : 'map-editor'}
+                        >
+                          {selectMode ? (selected.has(item.id) ? 'Quitar selección' : 'Seleccionar') : <><Pencil size={13} /> Editar</>}
+                        </button>
+                      </td>
+                    </tr>
                   ))}
                   {!filteredData.length && (
                     <tr>

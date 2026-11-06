@@ -670,3 +670,82 @@ thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-raise
   .heading-tools > .primary-button { justify-content: center; }
   .map-editor-dialog { width: calc(100% - 20px); max-height: calc(100dvh - 20px); }
 }
+
+/* Acabado visual: lista compacta, etiquetas y controles uniformes. */
+th, td { padding: 14px 20px; }
+.map-row td { vertical-align: middle; }
+.map-row { transition: background-color 160ms ease; }
+.map-row:hover { background: #d4ad4c06; }
+.map-cell { width: 28%; }
+.guild-count { margin-top: 7px; border: 1px solid #d4ad4c18; padding: 2px 7px; }
+.guild-list { flex-direction: row; flex-wrap: wrap; gap: 7px; align-items: center; }
+.guild-row { display: inline-flex; gap: 7px; padding: 6px 10px; max-width: 100%; border: 1px solid #2b3744; border-radius: 7px; background: #17212c; font-size: 11px; line-height: 1.45; }
+.guild-row i { width: 5px; height: 5px; flex-shrink: 0; box-shadow: 0 0 7px #d4ad4c25; }
+.guild-row strong { font-weight: 500; }
+.search-match { padding: 1px 2px; border-radius: 3px; background: #d4ad4c2b; color: #ffe095; font-weight: 700; box-decoration-break: clone; }
+.search-wrap { transition: border-color 160ms ease, box-shadow 160ms ease; }
+.search-wrap:focus-within { border-color: #d4ad4c80; box-shadow: 0 0 0 3px #d4ad4c0c; }
+:is(.primary-button, .secondary-button, .clear-button, .add-guild, .toolbar .delete-button) { min-height: 36px; height: auto; border-radius: 8px; padding: 8px 12px; gap: 7px; font-size: 12px; font-weight: 600; line-height: 1.25; transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease; }
+.primary-button { border: 1px solid #e6bd5770; box-shadow: 0 3px 10px #b8892917; }
+:is(.primary-button, .secondary-button, .clear-button, .add-guild):hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 14px #0003; }
+:is(.secondary-button, .clear-button, .add-guild):hover:not(:disabled) { border-color: #d4ad4c80; background: #d4ad4c0a; }
+.primary-button:hover:not(:disabled) { background: linear-gradient(135deg, #f0ca6b, #c89a37); }
+:is(.primary-button, .secondary-button, .clear-button, .add-guild):active:not(:disabled) { transform: translateY(0); }
+button:disabled { transform: none; }
+.actions-cell { width: 112px; }
+.action-edit-btn { white-space: nowrap; }
+
+/* Encabezado y pie del formulario siempre visibles; solo se desplazan los campos. */
+.map-editor-dialog { overflow: hidden; max-height: calc(100dvh - 32px); }
+.map-editor-dialog .editor-card { padding: 0; }
+.map-editor-dialog .editor-fields { display: flex; flex-direction: column; max-height: min(760px, calc(100dvh - 48px)); }
+.map-editor-dialog .editor-title { flex-shrink: 0; margin: 0; padding: 22px 24px; border-bottom: 1px solid var(--line); background: #131b25; }
+.map-editor-dialog .editor-grid { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 24px; gap: 24px; overscroll-behavior: contain; scrollbar-color: #354250 var(--surface); }
+.editor-title h2 { font-size: 22px; }
+.field-count { display: inline-block; margin-left: 5px; padding: 2px 6px; border-radius: 4px; background: #d4ad4c14; color: var(--gold); font-size: 10px; }
+.field-hint { margin: 6px 0 12px; color: var(--muted); font-size: 11px; }
+.editor-grid input { transition: border-color 160ms ease, box-shadow 160ms ease; }
+.editor-grid input:focus { box-shadow: 0 0 0 3px #d4ad4c0c; }
+.remove-button { min-height: 36px; min-width: 36px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 8px; transition: background-color 160ms ease; }
+.remove-button:hover:not(:disabled) { background: #d56a7212; border-color: #d56a7230; }
+.editor-footer { flex-shrink: 0; padding: 18px 24px; border-top: 1px solid var(--line); background: #131b25; }
+.editor-footer .editor-actions { margin: 0; padding: 0; border: 0; }
+.editor-footer .form-status { margin-top: 10px; font-size: 11px; }
+.editor-footer .form-notice { margin-top: 8px; }
+
+/* Esqueletos con la misma estructura que los mapas, sin cambiar datos. */
+.loading-maps { min-height: 400px; }
+.skeleton { display: block; border-radius: 6px; background: linear-gradient(100deg, #1a2531 25%, #263341 45%, #1a2531 65%); background-size: 240% 100%; animation: skeleton-shimmer 1.8s ease-in-out infinite; }
+.skeleton-name { width: 64%; max-width: 190px; height: 14px; margin: 2px 0 10px; }
+.skeleton-count { width: 58px; height: 16px; }
+.skeleton-guilds { display: flex; flex-wrap: wrap; gap: 7px; }
+.skeleton-chip { width: 105px; height: 29px; }
+.skeleton-chip:nth-child(even) { width: 83px; }
+.skeleton-button { width: 76px; height: 36px; margin-left: auto; }
+.skeleton-row td { vertical-align: middle; }
+@keyframes skeleton-shimmer { from { background-position: 150% 0; } to { background-position: -100% 0; } }
+
+@media (max-width: 620px) {
+  .map-row { padding: 16px; gap: 12px; }
+  .map-row td { padding: 0; }
+  .map-row .map-cell { width: auto; }
+  :is(.primary-button, .secondary-button, .clear-button, .add-guild, .toolbar .delete-button, .remove-button) { min-height: 44px; }
+  .map-row .action-edit-btn { width: 100%; }
+  .guild-row { padding: 6px 9px; }
+  .map-editor-dialog .editor-title { padding: 18px; gap: 12px; flex-wrap: nowrap; align-items: center; }
+  .editor-title h2 { font-size: 20px; }
+  .editor-title .eyebrow { font-size: 9px; letter-spacing: 1.1px; }
+  .editor-title .clear-button { font-size: 11px; flex-shrink: 0; }
+  .map-editor-dialog .editor-grid { padding: 18px; grid-template-columns: 1fr; }
+  .map-editor-dialog .editor-fields { max-height: calc(100dvh - 32px); }
+  .editor-footer { padding: 16px 18px; }
+  .editor-footer .editor-actions { flex-wrap: nowrap; }
+  .skeleton-row { display: grid; grid-template-columns: 1fr; padding: 16px; gap: 16px; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 12px; }
+  .skeleton-row td { display: block; width: auto; padding: 0; border: 0; }
+  .skeleton-button { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  .skeleton { animation: none; background: #202d3a; }
+}
