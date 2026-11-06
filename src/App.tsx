@@ -1,13 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Download,
-  FolderOpen,
   Loader2,
-  Moon,
   Pencil,
   Plus,
   Search,
-  Sun,
   Trash2,
   X,
 } from 'lucide-react';
@@ -31,7 +27,6 @@ function toDbGuilds(guilds: Guild[]) {
 }
 
 function App() {
-  const [darkMode, setDarkMode] = useState(true);
   const [data, setData] = useState<MapEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -121,8 +116,8 @@ function App() {
   }, [loadAll]);
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', darkMode);
-  }, [darkMode]);
+    document.documentElement.classList.add('dark');
+  }, []);
 
   function flash(message: string) {
     setNotice(message);
@@ -139,7 +134,6 @@ function App() {
     setEditingMap(item.id);
     setMapName(item.map);
     setGuilds(item.guilds.length ? item.guilds : [{ name: '' }]);
-    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
   }
 
   async function saveEntry() {
@@ -239,120 +233,73 @@ function App() {
     });
   }
 
-  function exportData() {
-    const exportable = data.map(({ map, guilds, lastEdited }) => ({
-      map,
-      guilds,
-      lastEdited,
-    }));
-    const blob = new Blob([JSON.stringify(exportable, null, 2)], { type: 'application/json' });
-    const url = URL.URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `radar_albion_${new Date().toISOString().slice(0, 10)}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-    flash('Archivo guardado');
-  }
-
-  async function importData(file: File) {
-    const reader = new FileReader();
-    reader.onload = async () => {
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(String(reader.result));
-      } catch {
-        flash('El archivo no es un JSON válido');
-        return;
-      }
-
-      if (!Array.isArray(parsed)) {
-        flash('El archivo debe contener un array de mapas');
-        return;
-      }
-
-      const now = new Date().toLocaleString('es-ES');
-      const rowsToInsert: {
-        map: string;
-        guild_name: string;
-        guild_type: string;
-        alliance_name: null;
-        tier: null;
-        calidad: null;
-        lastEdited: string;
-        radar: string;
-      }[] = [];
-      let importedCount = 0;
-      let skippedCount = 0;
-
-      for (const item of parsed) {
-        if (!item || typeof item !== 'object') {
-          skippedCount++;
-          continue;
-        }
-
-        const raw = item as { map?: unknown; guilds?: unknown; lastEdited?: unknown };
-        if (
-          typeof raw.map !== 'string' ||
-          !raw.map.trim() ||
-          !Array.isArray(raw.guilds)
-        ) {
-          skippedCount++;
-          continue;
-        }
-
-        const mapName = raw.map.trim();
-        const guildList = raw.guilds as Guild[];
-        const validGuilds = guildList.filter(
-          (g) => g && typeof g.name === 'string' && g.name.trim(),
-        );
-
-        if (!validGuilds.length) {
-          skippedCount++;
-          continue;
-        }
-
-        importedCount++;
-        for (const g of validGuilds) {
-          rowsToInsert.push({
-            map: mapName,
-            guild_name: g.name.trim(),
-            guild_type: 'HO',
-            alliance_name: null,
-            tier: null,
-            calidad: null,
-            lastEdited: (item as { lastEdited?: string }).lastEdited || now,
-            radar: RADAR_KEY,
-          });
-        }
-      }
-
-      if (!rowsToInsert.length) {
-        flash(
-          skippedCount
-            ? `No se importaron mapas. ${skippedCount} elemento(s) con formato inválido`
-            : 'No se encontraron mapas en el archivo',
-        );
-        return;
-      }
-
-      try {
-        const { error } = await supabase.from('mapas_hideouts').insert(rowsToInsert);
-        if (error) throw error;
-        flash(
-          `Se importaron ${importedCount} mapa(s)` +
-            (skippedCount ? `, se omitieron ${skippedCount} por formato inválido` : ''),
-        );
-        await loadAll();
-      } catch {
-        flash('No se pudieron guardar los datos importados');
-      }
-    };
-    reader.readAsText(file);
-  }
+  const editor = (
+    <section className="editor-card">
+      <div className="editor-title">
+        <div>
+          <div className="eyebrow">GESTIÓN DE DATOS</div>
+          <h2>{editingMap ? 'Editar mapa' : 'Agregar mapa'}</h2>
+        </div>
+        {editingMap && (
+          <button className="clear-button" onClick={resetForm}>
+            <X size={15} /> Cancelar edición
+          </button>
+        )}
+      </div>
+      <div className="editor-grid">
+        <label>
+          Nombre del mapa
+          <input
+            value={mapName}
+            onChange={(event) => setMapName(event.target.value)}
+            placeholder="Ej. Avalancha Ravine"
+          />
+        </label>
+        <div>
+          <div className="field-label">Gremios</div>
+          {guilds.map((guild, index) => (
+            <div className="guild-input-row" key={index}>
+              <input
+                value={guild.name}
+                onChange={(event) =>
+                  setGuilds(
+                    guilds.map((item, itemIndex) =>
+                      itemIndex === index ? { ...item, name: event.target.value } : item,
+                    ),
+                  )
+                }
+                placeholder="Nombre del gremio"
+              />
+              {guilds.length > 1 && (
+                <button
+                  className="remove-button"
+                  onClick={() => setGuilds(guilds.filter((_, itemIndex) => itemIndex !== index))}
+                  aria-label="Quitar gremio"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+          ))}
+          <button className="add-guild" onClick={() => setGuilds([...guilds, { name: '' }])}>
+            <Plus size={15} /> Agregar otro gremio
+          </button>
+        </div>
+      </div>
+      <div className="editor-actions">
+        <button className="primary-button" onClick={saveEntry} disabled={saving}>
+          {saving ? <Loader2 size={17} className="spin" /> : <Plus size={17} />}{' '}
+          {editingMap ? 'Guardar cambios' : 'Agregar'}
+        </button>
+        <button className="clear-button" onClick={resetForm}>
+          Limpiar
+        </button>
+      </div>
+    </section>
+  );
 
   return (
-    <div className={`app-shell ${darkMode ? 'theme-dark' : 'theme-light'}`}>
+    <div className="app-shell theme-dark">
       <main className="main-content">
         <header className="topbar">
           <div className="brand-header">
@@ -363,25 +310,6 @@ function App() {
               <strong>HO ZN</strong>
               <span className="brand-subtitle">{RADAR_NAME}</span>
             </div>
-          </div>
-          <div className="top-actions">
-            <button className="icon-button" onClick={() => setDarkMode(!darkMode)} title="Cambiar tema">
-              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-            <label className="file-button secondary-button">
-              <FolderOpen size={16} /> Cargar
-              <input
-                type="file"
-                accept="application/json,.json"
-                onChange={(event) => {
-                  if (event.target.files?.[0]) importData(event.target.files[0]);
-                  event.target.value = '';
-                }}
-              />
-            </label>
-            <button className="secondary-button" onClick={exportData}>
-              <Download size={16} /> Guardar
-            </button>
           </div>
         </header>
 
@@ -429,6 +357,9 @@ function App() {
               {loading ? 'Cargando...' : `${filteredData.length} resultados`}
             </span>
           </div>
+          {selectMode && (
+            <p className="selection-hint">Pulsa en cualquier parte de una fila para seleccionar o quitar la selección del mapa.</p>
+          )}
           <div className="table-wrap">
             {loading ? (
               <div className="empty-state">
@@ -448,43 +379,58 @@ function App() {
                 </thead>
                 <tbody>
                   {filteredData.map((item) => (
-                    <tr
-                      key={item.id}
-                      className={selected.has(item.id) ? 'row-selected' : ''}
-                      onClick={selectMode ? () => toggleSelection(item.id) : undefined}
-                    >
-                      {selectMode && (
-                        <td className="checkbox-col" onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="checkbox"
-                            checked={selected.has(item.id)}
-                            onChange={() => toggleSelection(item.id)}
-                          />
+                    <Fragment key={item.id}>
+                      <tr
+                        className={`${selectMode ? 'row-selectable' : ''} ${selected.has(item.id) ? 'row-selected' : ''}`}
+                        onClick={selectMode ? () => toggleSelection(item.id) : undefined}
+                      >
+                        {selectMode && (
+                          <td className="checkbox-col">
+                            <input
+                              type="checkbox"
+                              aria-label={`Seleccionar ${item.map}`}
+                              onClick={(event) => event.stopPropagation()}
+                              checked={selected.has(item.id)}
+                              onChange={() => toggleSelection(item.id)}
+                            />
+                          </td>
+                        )}
+                        <td className="map-cell">
+                          <strong>{item.map}</strong>
                         </td>
+                        <td>
+                          <div className="guild-list">
+                            {item.guilds.map((guild, index) => (
+                              <div className="guild-row" key={`${guild.name}-${index}`}>
+                                <i />
+                                <strong>{guild.name}</strong>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="actions-cell">
+                          <button
+                            className="secondary-button action-edit-btn"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              if (selectMode) toggleSelection(item.id);
+                              else beginEdit(item);
+                            }}
+                            title={selectMode ? 'Seleccionar mapa para eliminar' : 'Editar mapa'}
+                            aria-pressed={selectMode ? selected.has(item.id) : undefined}
+                            aria-expanded={selectMode ? undefined : editingMap === item.id}
+                            aria-controls={!selectMode && editingMap === item.id ? 'map-editor' : undefined}
+                          >
+                            {selectMode ? (selected.has(item.id) ? 'Quitar selección' : 'Seleccionar') : <><Pencil size={13} /> Editar</>}
+                          </button>
+                        </td>
+                      </tr>
+                      {editingMap === item.id && (
+                        <tr className="inline-editor-row" id="map-editor">
+                          <td colSpan={selectMode ? 4 : 3}>{editor}</td>
+                        </tr>
                       )}
-                      <td className="map-cell">
-                        <strong>{item.map}</strong>
-                      </td>
-                      <td>
-                        <div className="guild-list">
-                          {item.guilds.map((guild, index) => (
-                            <div className="guild-row" key={`${guild.name}-${index}`}>
-                              <i />
-                              <strong>{guild.name}</strong>
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="actions-cell" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          className="secondary-button action-edit-btn"
-                          onClick={() => beginEdit(item)}
-                          title="Editar mapa"
-                        >
-                          <Pencil size={13} /> Editar
-                        </button>
-                      </td>
-                    </tr>
+                    </Fragment>
                   ))}
                   {!filteredData.length && (
                     <tr>
@@ -504,68 +450,7 @@ function App() {
           </div>
         </section>
 
-        <section className="editor-card">
-          <div className="editor-title">
-            <div>
-              <div className="eyebrow">GESTIÓN DE DATOS</div>
-              <h2>{editingMap ? 'Editar mapa' : 'Agregar mapa'}</h2>
-            </div>
-            {editingMap && (
-              <button className="clear-button" onClick={resetForm}>
-                <X size={15} /> Cancelar edición
-              </button>
-            )}
-          </div>
-          <div className="editor-grid">
-            <label>
-              Nombre del mapa
-              <input
-                value={mapName}
-                onChange={(event) => setMapName(event.target.value)}
-                placeholder="Ej. Avalancha Ravine"
-              />
-            </label>
-            <div>
-              <div className="field-label">Gremios</div>
-              {guilds.map((guild, index) => (
-                <div className="guild-input-row" key={index}>
-                  <input
-                    value={guild.name}
-                    onChange={(event) =>
-                      setGuilds(
-                        guilds.map((item, itemIndex) =>
-                          itemIndex === index ? { ...item, name: event.target.value } : item,
-                        ),
-                      )
-                    }
-                    placeholder="Nombre del gremio"
-                  />
-                  {guilds.length > 1 && (
-                    <button
-                      className="remove-button"
-                      onClick={() => setGuilds(guilds.filter((_, itemIndex) => itemIndex !== index))}
-                      aria-label="Quitar gremio"
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button className="add-guild" onClick={() => setGuilds([...guilds, { name: '' }])}>
-                <Plus size={15} /> Agregar otro gremio
-              </button>
-            </div>
-          </div>
-          <div className="editor-actions">
-            <button className="primary-button" onClick={saveEntry} disabled={saving}>
-              {saving ? <Loader2 size={17} className="spin" /> : <Plus size={17} />}{' '}
-              {editingMap ? 'Guardar cambios' : 'Agregar'}
-            </button>
-            <button className="clear-button" onClick={resetForm}>
-              Limpiar
-            </button>
-          </div>
-        </section>
+        {!editingMap && editor}
       </main>
       {notice && <div className="toast">{notice}</div>}
     </div>
