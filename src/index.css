@@ -152,11 +152,7 @@ button {
   font-size: clamp(28px, 4vw, 38px);
 }
 
-.page-heading p {
-  color: var(--muted);
-  font-size: 13px;
-  margin: 10px 0 0;
-}
+
 
 .stat-card {
   border-left: 1px solid var(--line);

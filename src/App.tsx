@@ -446,9 +446,7 @@ function App() {
 
         <section className="page-heading">
           <div>
-            <div className="eyebrow">MAPAS Y GREMIOS</div>
             <h1>{RADAR_NAME}</h1>
-            <p>Consulta y organiza los gremios encontrados en cada mapa. Los cambios se ven al instante.</p>
           </div>
           <div className="heading-tools">
             <div className="summary-stats" role="status" aria-label="Resumen de resultados">
