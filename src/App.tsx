@@ -20,7 +20,7 @@ type MapEntry = {
 };
 
 const RADAR_KEY = 'black-zone';
-const RADAR_NAME = 'HO Zona Negra';
+const RADAR_NAME = 'GuildTrace';
 
 function toDbGuilds(guilds: Guild[]) {
   return guilds.filter((g) => g.name.trim()).map((g) => ({
@@ -414,11 +414,11 @@ function App() {
         <header className="topbar">
           <div className="brand-header">
             <div className="brand-mark">
-              <img src="/image.png" alt="HO ZN" className="brand-logo" />
+              <img src="/guildtrace.png" alt="GuildTrace" className="brand-logo" />
             </div>
             <div className="brand-text">
-              <strong>HO ZN</strong>
-              <span className="brand-subtitle">{RADAR_NAME}</span>
+              <strong>GuildTrace</strong>
+              <span className="brand-subtitle">Mapas y gremios de Albion</span>
             </div>
           </div>
           {(!online || dataError || saving || dirty || saveStatus === 'saved') && (
