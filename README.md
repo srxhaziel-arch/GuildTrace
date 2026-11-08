@@ -38,8 +38,3 @@ de producción activan el despliegue automático. Configura en Vercel las mismas
 variables de Supabase antes de compilar.
 
 Configuración de compilación: `npm run build`. Directorio de salida: `dist`.
-
-## Bot de Discord
-
-GuildTrace incluye `/mapa` y `/gremio`, con autocompletado y paginación.
-Consulta [la guía de activación](bot/README.md). El bot solo lee los datos de Supabase.
