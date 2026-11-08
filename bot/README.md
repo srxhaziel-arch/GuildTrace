@@ -26,7 +26,7 @@ En el proyecto de la web, añade en **Settings → Environment Variables**:
 
 | Variable | Uso |
 | --- | --- |
-| `DISCORD_PUBLIC_KEY` | Public Key de General Information, 64 caracteres hexadecimales. |
+| `DISCORD_PUBLIC_KEY` | Opcional: reemplaza la clave pública guardada en `bot/application.js`. |
 | `VITE_SUPABASE_URL` | URL pública del proyecto Supabase; ya la usa la web. |
 | `VITE_SUPABASE_ANON_KEY` | Clave pública anon/publishable; ya la usa la web. |
 | `WEBSITE_URL` | Opcional, URL HTTPS de la web si cambia su dirección. |
@@ -34,6 +34,8 @@ En el proyecto de la web, añade en **Settings → Environment Variables**:
 También se admiten `SUPABASE_URL` y `SUPABASE_ANON_KEY` como alternativas en el
 servidor. Nunca se necesita una clave `service_role`.
 
+Los identificadores públicos de la aplicación de GuildTrace están guardados en
+`bot/application.js`; el token privado nunca se guarda allí.
 Despliega nuevamente después de guardar las variables. El token del bot **no se
 necesita en Vercel**: las respuestas usan el token temporal de cada interacción.
 
@@ -42,12 +44,12 @@ necesita en Vercel**: las respuestas usan el token temporal de cada interacción
 En Discord → **General Information → Interactions Endpoint URL**, guarda:
 
 ```
-https://hozonanegra.vercel.app/api/discord
+https://guildtrace.vercel.app/api/discord
 ```
 
 Esta es la dirección actual de GuildTrace. Si cambias el dominio, actualiza también
 el endpoint. Discord envía un PING firmado para verificarlo. El endpoint rechaza
-peticiones sin firma o alteradas. Responde 503 mientras falte la clave pública.
+peticiones sin firma o alteradas. Las peticiones sin firma reciben 401.
 
 ## 4. Registrar los comandos e invitarlo
 
@@ -59,7 +61,9 @@ npm run bot:test
 npm run bot:register -- --dry-run
 ```
 
-Para registrar de verdad, configura `DISCORD_APPLICATION_ID` y `DISCORD_BOT_TOKEN`
+Para registrar de verdad, configura `DISCORD_BOT_TOKEN` de forma segura.
+El Application ID público ya está incluido en `bot/application.js` y puede
+sobrescribirse con `DISCORD_APPLICATION_ID`
 en el entorno del comando. También puedes usar un `.env.local` ignorado por Git.
 No pongas valores de secretos en el historial del terminal. Opcionalmente define
 `DISCORD_GUILD_ID` para registrar primero en un único servidor de prueba.

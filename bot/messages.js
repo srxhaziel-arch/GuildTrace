@@ -1,3 +1,5 @@
+import { application } from './application.js';
+
 const normalize = (value) => value.trim().toLocaleLowerCase('es');
 const escape = (value) => value.replace(/[\r\n]/g, ' ').replace(/[\\`*_~|>[\]]/g, '\\$&').slice(0, 180);
 const baseMessage = { allowed_mentions: { parse: [] } };
@@ -24,7 +26,7 @@ export function autocomplete(maps, mode, query) {
   return [...unique.values()].sort((a, b) => a.localeCompare(b, 'es')).slice(0, 25).map((name) => ({ name, value: name }));
 }
 
-export function renderQuery({ maps, mode, query, page = 0, owner, website = 'https://hozonanegra.vercel.app/' }) {
+export function renderQuery({ maps, mode, query, page = 0, owner, website = application.website }) {
   const match = normalize(query);
   const map = mode === 'mapa' ? maps.find((item) => normalize(item.name) === match) : null;
   const matches = mode === 'gremio' ? maps.filter((item) => item.guilds.some((name) => normalize(name) === match)) : [];

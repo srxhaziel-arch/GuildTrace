@@ -58,6 +58,7 @@ export function createHandler({ env = process.env, schedule, repository = create
     try { interaction = JSON.parse(body.toString('utf8')); }
     catch { return json(res, 400, { error: 'JSON no válido' }); }
     if (interaction.type === 1) return json(res, 200, { type: 1 });
+    if (env.DISCORD_APPLICATION_ID && interaction.application_id !== env.DISCORD_APPLICATION_ID) return json(res, 401, { error: 'Aplicación no válida' });
     const reply = (content) => json(res, 200, { type: 4, data: { content, flags: 64, allowed_mentions: { parse: [] } } });
     if (interaction.type === 4) {
       if (!['mapa', 'gremio'].includes(interaction.data?.name)) return json(res, 200, { type: 8, data: { choices: [] } });

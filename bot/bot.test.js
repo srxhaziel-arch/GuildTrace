@@ -197,3 +197,17 @@ test('endpoint Web de Vercel verifica el cuerpo exacto, incluidos espacios y sal
     else process.env.DISCORD_PUBLIC_KEY = originalKey;
   }
 });
+
+test('enlaces del bot usan el dominio GuildTrace', () => {
+  const message = renderQuery({ maps, mode: 'mapa', query: 'Avalanche Incline', owner: '333' });
+  const link = message.components.flatMap((row) => row.components).find((item) => item.style === 5);
+  assert.equal(link.url, 'https://guildtrace.vercel.app/');
+});
+
+test('rechaza otra aplicación incluso con una petición firmada', async () => {
+  const state = setup({ env: { DISCORD_PUBLIC_KEY: hexKey, DISCORD_APPLICATION_ID: '999' } });
+  const res = response();
+  await state.handler(request(slash), res);
+  assert.equal(res.statusCode, 401);
+  assert.equal(state.tasks.length, 0);
+});

@@ -1,6 +1,7 @@
 import { commands } from './commands.js';
+import { application } from './application.js';
 
-const app = process.env.DISCORD_APPLICATION_ID;
+const app = process.env.DISCORD_APPLICATION_ID || application.id;
 const guild = process.env.DISCORD_GUILD_ID;
 const token = process.env.DISCORD_BOT_TOKEN;
 if (process.argv.includes('--dry-run')) {

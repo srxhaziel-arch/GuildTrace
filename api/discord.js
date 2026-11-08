@@ -1,7 +1,16 @@
 import { waitUntil } from '@vercel/functions';
 import { createHandler } from '../bot/handler.js';
+import { application } from '../bot/application.js';
 
-const handler = createHandler({ schedule: waitUntil });
+const handler = createHandler({
+  schedule: waitUntil,
+  env: {
+    ...process.env,
+    DISCORD_PUBLIC_KEY: process.env.DISCORD_PUBLIC_KEY || application.publicKey,
+    DISCORD_APPLICATION_ID: process.env.DISCORD_APPLICATION_ID || application.id,
+    WEBSITE_URL: process.env.WEBSITE_URL || application.website,
+  },
+});
 
 // Web Handler de Vercel: leer el stream original, sin los helpers que parsean req.body.
 export async function POST(request) {
