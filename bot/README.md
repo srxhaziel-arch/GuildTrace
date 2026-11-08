@@ -61,7 +61,10 @@ npm run bot:test
 npm run bot:register -- --dry-run
 ```
 
-Para registrar de verdad, configura `DISCORD_BOT_TOKEN` de forma segura.
+Para registrar de verdad, configura `DISCORD_REGISTRATION_TOKEN` en la ventana
+Configurar variables de entorno de este chat. Es un campo privado que se usa solo
+para ejecutar el registro, no una variable VITE ni un valor público. El script
+también admite `DISCORD_BOT_TOKEN` para configuraciones existentes.
 El Application ID público ya está incluido en `bot/application.js` y puede
 sobrescribirse con `DISCORD_APPLICATION_ID`
 en el entorno del comando. También puedes usar un `.env.local` ignorado por Git.
