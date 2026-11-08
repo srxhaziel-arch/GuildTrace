@@ -83,7 +83,9 @@ button {
   object-fit: contain;
 }
 
-.brand-header strong {
+.brand-header h1 {
+  margin: 0;
+  font-weight: 700;
   display: block;
   color: #f1ca67;
   font-family: Manrope, sans-serif;
@@ -97,12 +99,7 @@ button {
   gap: 1px;
 }
 
-.brand-subtitle {
-  color: #6b7a89;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: .3px;
-}
+
 
 .secondary-button {
   border: 1px solid var(--line);
@@ -128,8 +125,8 @@ button {
 .page-heading {
   padding: 40px 0 28px;
   display: flex;
-  align-items: end;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: center;
   gap: 24px;
 }
 
@@ -141,23 +138,25 @@ button {
   margin-bottom: 9px;
 }
 
-.page-heading h1, .editor-title h2 {
+.editor-title h2 {
   margin: 0;
   color: var(--text);
   font-family: Manrope, sans-serif;
   letter-spacing: -.8px;
 }
 
-.page-heading h1 {
-  font-size: clamp(28px, 4vw, 38px);
-}
+
 
 
 
 .stat-card {
+  padding: 0 24px;
+  min-width: 140px;
+  text-align: center;
+}
+
+.stat-card + .stat-card {
   border-left: 1px solid var(--line);
-  padding-left: 24px;
-  min-width: 150px;
 }
 
 .stat-card span {
@@ -557,14 +556,8 @@ tbody tr:last-child td {
   }
   .page-heading {
     padding: 28px 0 20px;
-    align-items: start;
+    align-items: center;
     flex-direction: column;
-  }
-  .stat-card {
-    border-left: 0;
-    border-top: 1px solid var(--line);
-    padding: 15px 0 0;
-    width: 100%;
   }
   .toolbar {
     padding: 12px;
@@ -648,22 +641,18 @@ thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-raise
 }
 
 
-.heading-tools { display: flex; flex-direction: column; align-items: flex-end; gap: 18px; flex-shrink: 0; }
-.summary-stats { display: flex; gap: 24px; }
-.summary-stats .stat-card { min-width: 110px; }
+.heading-tools { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.heading-tools > .primary-button { min-width: 170px; justify-content: center; }
+.summary-stats { display: flex; justify-content: center; }
+
 .map-editor-dialog { padding: 0; width: min(900px, calc(100% - 32px)); max-height: calc(100dvh - 32px); border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text); box-shadow: 0 24px 80px #0008; overscroll-behavior: contain; }
 .map-editor-dialog::backdrop { background: #05090dcc; backdrop-filter: blur(4px); }
 .map-editor-dialog .editor-card { margin: 0; border: 0; background: transparent; box-shadow: none; }
 .form-notice { color: var(--gold); font-size: 13px; margin: 12px 0 0; }
 
-@media (max-width: 850px) {
-  .page-heading { flex-wrap: wrap; }
-}
 @media (max-width: 620px) {
-  .heading-tools { width: 100%; align-items: stretch; }
-  .summary-stats { gap: 16px; }
-  .summary-stats .stat-card { flex: 1; min-width: 0; width: auto; }
-  .heading-tools > .primary-button { justify-content: center; }
+  .heading-tools { width: 100%; align-items: center; }
+  .summary-stats .stat-card { min-width: 120px; padding: 0 18px; }
   .map-editor-dialog { width: calc(100% - 20px); max-height: calc(100dvh - 20px); }
 }
 
