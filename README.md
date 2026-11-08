@@ -38,3 +38,23 @@ de producción activan el despliegue automático. Configura en Vercel las mismas
 variables de Supabase antes de compilar.
 
 Configuración de compilación: `npm run build`. Directorio de salida: `dist`.
+
+## Recursos y caché
+
+La cabecera usa versiones WebP de 64 y 128 píxeles del logo, y el favicon tiene su
+propio PNG pequeño. El original se conserva en `design/guildtrace-master.png` y no
+se incluye en la descarga de la web. `public/guildtrace.png` conserva una copia de
+512 píxeles para enlaces compartidos anteriormente.
+
+Para regenerar las imágenes con ImageMagick 7, ejecuta
+`bash scripts/optimize-brand.sh` y actualiza las referencias de `src/App.tsx` e
+`index.html` con las rutas de `design/brand-assets.json`. Las imágenes resultantes
+ya están guardadas en Git; ImageMagick no es necesario para instalar o compilar.
+
+DM Sans y Manrope se sirven localmente en WOFF2 con `font-display: swap`. Sus
+licencias SIL OFL están en `public/licenses/` y las fuentes originales de descarga
+quedan registradas en `design/font-assets.json`.
+
+Los archivos con versión en `/assets`, `/brand` y `/fonts` se guardan en caché
+por un año. Al cambiar su contenido, cambia también su nombre. El HTML conserva
+la revalidación habitual de Vercel para recibir las nuevas versiones.

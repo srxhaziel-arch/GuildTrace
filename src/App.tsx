@@ -414,7 +414,16 @@ function App() {
         <header className="topbar">
           <div className="brand-header">
             <div className="brand-mark">
-              <img src="/guildtrace.png" alt="GuildTrace" className="brand-logo" />
+              <img
+                src="/brand/guildtrace-logo-64.6a5e6cc871.webp"
+                srcSet="/brand/guildtrace-logo-64.6a5e6cc871.webp 64w, /brand/guildtrace-logo-128.203dae3659.webp 128w"
+                sizes="38px"
+                width={38}
+                height={38}
+                decoding="async"
+                alt="GuildTrace"
+                className="brand-logo"
+              />
             </div>
             <div className="brand-text">
               <strong>GuildTrace</strong>

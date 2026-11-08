@@ -1,0 +1,58 @@
+[
+  {
+    "family": "DM Sans",
+    "subset": "latin-ext",
+    "source": "https://fonts.gstatic.com/s/dmsans/v17/rP2Yp2ywxg089UriI5-g4vlH9VoD8Cmcqbu6-K6h9Q.woff2",
+    "file": "/fonts/dm-sans-latin-ext.a5d38fe99f.woff2",
+    "bytes": 18228
+  },
+  {
+    "family": "DM Sans",
+    "subset": "latin",
+    "source": "https://fonts.gstatic.com/s/dmsans/v17/rP2Yp2ywxg089UriI5-g4vlH9VoD8Cmcqbu0-K4.woff2",
+    "file": "/fonts/dm-sans-latin.9fea608a94.woff2",
+    "bytes": 36932
+  },
+  {
+    "family": "Manrope",
+    "subset": "cyrillic-ext",
+    "source": "https://fonts.gstatic.com/s/manrope/v23/xn7gYHE41ni1AdIRggqxSuXd.woff2",
+    "file": "/fonts/manrope-cyrillic-ext.3c09135e88.woff2",
+    "bytes": 2588
+  },
+  {
+    "family": "Manrope",
+    "subset": "cyrillic",
+    "source": "https://fonts.gstatic.com/s/manrope/v23/xn7gYHE41ni1AdIRggOxSuXd.woff2",
+    "file": "/fonts/manrope-cyrillic.447c49583b.woff2",
+    "bytes": 14352
+  },
+  {
+    "family": "Manrope",
+    "subset": "greek",
+    "source": "https://fonts.gstatic.com/s/manrope/v23/xn7gYHE41ni1AdIRggSxSuXd.woff2",
+    "file": "/fonts/manrope-greek.e507c109c3.woff2",
+    "bytes": 9268
+  },
+  {
+    "family": "Manrope",
+    "subset": "vietnamese",
+    "source": "https://fonts.gstatic.com/s/manrope/v23/xn7gYHE41ni1AdIRggixSuXd.woff2",
+    "file": "/fonts/manrope-vietnamese.dbf64d973b.woff2",
+    "bytes": 8388
+  },
+  {
+    "family": "Manrope",
+    "subset": "latin-ext",
+    "source": "https://fonts.gstatic.com/s/manrope/v23/xn7gYHE41ni1AdIRggmxSuXd.woff2",
+    "file": "/fonts/manrope-latin-ext.2f73351190.woff2",
+    "bytes": 15160
+  },
+  {
+    "family": "Manrope",
+    "subset": "latin",
+    "source": "https://fonts.gstatic.com/s/manrope/v23/xn7gYHE41ni1AdIRggexSg.woff2",
+    "file": "/fonts/manrope-latin.8c2def024c.woff2",
+    "bytes": 24532
+  }
+]
