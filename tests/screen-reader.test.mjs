@@ -23,6 +23,12 @@ test('reads an unlabelled name only in the explicitly selected-name mode', () =>
   assert.equal(extractGuildName('take care\nNivel: 3', true), null);
 });
 
+test('a name crop may contain an owner label or a wrapped label without being discarded', () => {
+  assert.equal(extractGuildName('Gremio: take care', true), 'take care');
+  assert.equal(extractGuildName('Owner:\nPlVAS', true), 'PlVAS');
+  assert.equal(extractGuildName('Owner: ifures\nGuild: pivas', true), null);
+});
+
 test('deduplicates repeated detections while preserving first-seen order and review state', () => {
   let list = [];
   for (const name of ['ifures', 'pivas', 'take care', 'darkmight', ' PIVAS ', 'take   care']) list = addDetection(list, name);

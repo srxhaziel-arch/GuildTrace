@@ -146,9 +146,16 @@ export default function ScreenReader({ maps, online, onSave }: Props) {
           </div>
           {selecting && <p className="capture-help">Encierra solo las letras del nombre, dejando un pequeño margen, y pulsa «Usar zona». No incluyas el resto del mapa. Con teclado: flechas para mover, Mayúsculas + flechas para ajustar el tamaño.</p>}
           {sharing && region && !selecting && <div className="capture-region-options"><label><input type="checkbox" checked={nameOnly} onChange={(event) => setNameOnly(event.target.checked)} disabled={saving} />La zona contiene solo el nombre del gremio</label><button className="clear-button" onClick={() => { setRegion(null); setNameOnly(false); }} disabled={saving}>Leer toda la ventana</button></div>}
+          {sharing && region && !selecting && <section className="reading-zoom" aria-label="Ampliación de la zona que lee el escáner"><strong>Esto es lo que está leyendo</strong><canvas ref={capture.readingCanvasRef} aria-label="Zona seleccionada ampliada" /><p>El nombre debe verse completo aquí. Si el recuadro quedó vacío o el texto se movió, pulsa «Cambiar zona».</p></section>}
           <p className="capture-status" role="status"><ScanLine size={16} />{capture.phase === 'paused' ? 'Lectura pausada. Puedes revisar la lista o continuar con otro HO.' : capture.status}</p>
           {capture.error && <p className="reader-error" role="alert">{capture.error}</p>}
-          {capture.reading && <details className="reader-instructions reading-result"><summary>Ver qué texto está leyendo</summary><p>{capture.reading.candidate ? `Nombre reconocido: ${capture.reading.candidate}` : 'Todavía no se reconoció un nombre. Este es el texto que pudo leer:'}</p><pre>{capture.reading.text || 'No se encontró texto legible.'}</pre></details>}
+          {sharing && capture.reading && <section className="reading-result" aria-label="Texto reconocido"><strong>Texto reconocido</strong><pre>{capture.reading.text || 'Todavía no se detectan letras en esta imagen.'}</pre>{capture.reading.candidate && <button className="secondary-button" disabled={saving || guilds.length >= 200 || guilds.some((guild) => guildKey(guild.name) === guildKey(capture.reading!.candidate!))} onClick={() => {
+            const name = capture.reading?.candidate;
+            if (!name) return;
+            capture.pause();
+            seenNames.current.add(guildKey(name));
+            setGuilds((previous) => previous.length < 200 ? addDetection(previous, name) : previous);
+          }}>Añadir a la lista para revisar</button>}</section>}
           {!capture.supported && <p className="reader-error">La captura de ventanas requiere un navegador compatible en un ordenador. Prueba Chrome o Edge con la web abierta mediante HTTPS.</p>}
           <details className="reader-instructions"><summary>Consejos para que lea mejor</summary><ul><li>Comparte la ventana de Albion y deja visible la información del HO durante unos segundos.</li><li>Si no detecta el gremio, pulsa «Marcar nombre» y selecciona solo sus letras. Este modo funciona sin «Gremio» ni «Owner» delante.</li><li>Si seleccionas un cuadro que también tiene etiquetas y otros datos, desactiva «La zona contiene solo el nombre del gremio».</li><li>Si la información cambia de lugar, vuelve a marcar la zona. Aumentar el tamaño de la interfaz del juego también puede ayudar.</li></ul></details>
         </section>

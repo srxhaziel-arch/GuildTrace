@@ -7,8 +7,10 @@ envían a la tabla existente `mapas_hideouts` al pulsar Guardar.
 
 La captura requiere HTTPS (o localhost) y un navegador de escritorio compatible.
 La lectura completa busca etiquetas en español o inglés; una zona seleccionada
-se lee por defecto como un único nombre sin etiqueta. Se exigen dos imágenes
-consecutivas coincidentes en el nombre y una confianza mínima de OCR. Esto reduce lecturas
+se lee por defecto como un nombre, admitiendo también una etiqueta dentro del
+recorte. Un recorte con confianza de OCR alta (70 o más) se añade a la lista
+pendiente en la primera lectura. Los demás requieren dos imágenes consecutivas
+coincidentes y confianza mínima de 40. Esto reduce lecturas
 accidentales, pero no garantiza la precisión en el juego: hay que probarlo con
 sus fuentes, idioma, resolución y tooltip reales. No se intercambian I, l y 1.
 
@@ -16,8 +18,10 @@ La captura solicita 30 fps para la vista previa. El OCR tiene su propio ritmo,
 adaptado al tiempo que tarda cada lectura, dejando descanso entre trabajos.
 Los recortes se limitan a 400.000 píxeles. Las imágenes cuyo resumen de color
 no cambia reutilizan el resultado de OCR anterior, evitando reconocer una
-pantalla estática repetidamente. «Ver qué texto está leyendo» permite comprobar
-si falla la lectura del texto o la identificación del gremio.
+pantalla estática repetidamente. La ampliación de la zona y el texto reconocido
+se muestran directamente para comprobar si falla la lectura o la identificación
+del gremio. Un candidato de baja confianza puede añadirse explícitamente a la
+lista pendiente para corregirlo; nunca se guarda automáticamente en Supabase.
 
 Los nombres pendientes y el mapa se conservan en sessionStorage de la pestaña,
 sin fotogramas. Salir del apartado detiene las pistas de vídeo y el worker.

@@ -8,6 +8,7 @@ type Settings = { region: CaptureRegion | null; nameOnly: boolean; selecting: bo
 
 export function useScreenCapture(settings: Settings, onDetected: (name: string) => void) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const readingCanvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>();
@@ -19,10 +20,16 @@ export function useScreenCapture(settings: Settings, onDetected: (name: string) 
   const [status, setStatus] = useState('Comparte la ventana de Albion para empezar.');
   const [error, setError] = useState('');
   const [aspect, setAspect] = useState(16 / 9);
-  const [reading, setReading] = useState<{ text: string; candidate: string | null; duration: number } | null>(null);
+  const [reading, setReading] = useState<{ text: string; candidate: string | null; confidence: number } | null>(null);
   const supported = !!navigator.mediaDevices?.getDisplayMedia && window.isSecureContext;
 
   useEffect(() => { config.current = settings; detect.current = onDetected; }, [settings, onDetected]);
+  useEffect(() => {
+    setReading(null);
+    if (!settings.region || !videoRef.current || !readingCanvasRef.current) return;
+    // Show the selected source even while reading is paused for calibration.
+    captureFrame(videoRef.current, readingCanvasRef.current, settings.region);
+  }, [settings.region, settings.nameOnly]);
 
   const dispose = useCallback(() => {
     generation.current++;
@@ -68,6 +75,7 @@ export function useScreenCapture(settings: Settings, onDetected: (name: string) 
       streamRef.current = stream;
       const track = stream.getVideoTracks()[0];
       if (!track) throw new Error('No video track');
+      track.contentHint = 'detail';
       track.addEventListener('ended', () => { if (session === generation.current) stop(); }, { once: true });
       const video = videoRef.current;
       if (!video) throw new Error('No video element');
@@ -111,7 +119,14 @@ export function useScreenCapture(settings: Settings, onDetected: (name: string) 
         }
         try {
           if (!paused.current && !snapshot.selecting && captureFrame(video!, canvas, snapshot.region)) {
-            const mode = snapshot.nameOnly && snapshot.region ? '7' : '11';
+            // A block also handles a small crop containing both a label and its name.
+            const mode = snapshot.region ? '6' : '11';
+            const magnified = readingCanvasRef.current;
+            if (snapshot.region && magnified) {
+              if (magnified.width !== canvas.width) magnified.width = canvas.width;
+              if (magnified.height !== canvas.height) magnified.height = canvas.height;
+              magnified.getContext('2d')?.drawImage(canvas, 0, 0);
+            }
             if (mode !== previousMode) {
               await worker.setParameters({ tessedit_pageseg_mode: mode as PSM, preserve_interword_spaces: '1' });
               previousMode = mode;
@@ -132,17 +147,18 @@ export function useScreenCapture(settings: Settings, onDetected: (name: string) 
             if (session !== generation.current) return;
             failures = 0;
             if (!paused.current && fingerprint === JSON.stringify(config.current)) {
-              const name = confidence >= 40 ? extractGuildName(text, snapshot.nameOnly && !!snapshot.region) : null;
+              const name = extractGuildName(text, snapshot.nameOnly && !!snapshot.region);
               const readableText = text.trim().slice(0, 1200);
-              setReading((last) => last?.text === readableText && last.candidate === name ? last : { text: readableText, candidate: name, duration: Math.round(scanDuration) });
-              if (name) {
+              setReading((last) => last?.text === readableText && last.candidate === name && last.confidence === confidence ? last : { text: readableText, candidate: name, confidence });
+              if (name && confidence >= 40) {
                 repeats = guildKey(name) === previous ? repeats + 1 : 1;
                 previous = guildKey(name);
-                if (repeats >= 2) { detect.current(name); setStatus(`Detectado: ${name}. Revisa el nombre en la lista.`); }
+                const clearCrop = !!snapshot.region && confidence >= 70;
+                if (clearCrop || repeats >= 2) { detect.current(name); setStatus(`Detectado: ${name}. Revisa el nombre en la lista.`); }
                 else setStatus(`Comprobando: ${name}… Mantén el cursor sobre el HO.`);
               } else {
                 previous = ''; repeats = 0;
-                setStatus(snapshot.region && snapshot.nameOnly ? 'No se pudo leer un nombre claro en la zona. Ajústala para incluir solo el texto.' : 'No se identificó un gremio. Pulsa «Marcar nombre» y encierra solo su texto.');
+                setStatus(name ? `Se alcanza a leer «${name}», pero con poca claridad. Puedes añadirlo para corregirlo antes de guardar.` : snapshot.region ? 'Revisa la ampliación: el nombre debe quedar dentro de la zona marcada y ser legible.' : 'No se identificó un gremio. Pulsa «Marcar nombre» y encierra solo su texto.');
               }
             }
           }
@@ -172,5 +188,5 @@ export function useScreenCapture(settings: Settings, onDetected: (name: string) 
     }
   }
 
-  return { videoRef, phase, status, error, reading, aspect, supported, start, stop, pause, resume };
+  return { videoRef, readingCanvasRef, phase, status, error, reading, aspect, supported, start, stop, pause, resume };
 }

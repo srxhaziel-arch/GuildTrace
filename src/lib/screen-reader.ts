@@ -14,7 +14,6 @@ function cleanName(value: string): string | null {
 
 export function extractGuildName(text: string, nameOnly = false): string | null {
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  if (nameOnly) return lines.length === 1 ? cleanName(lines[0]) : null;
   const candidates = new Set<string>();
   for (let index = 0; index < lines.length; index++) {
     if (!label.test(lines[index])) continue;
@@ -23,7 +22,8 @@ export function extractGuildName(text: string, nameOnly = false): string | null 
     if (candidate) candidates.add(candidate);
   }
   // Multiple different owners in the same frame are ambiguous.
-  return candidates.size === 1 ? [...candidates][0] : null;
+  if (candidates.size) return candidates.size === 1 ? [...candidates][0] : null;
+  return nameOnly && lines.length === 1 ? cleanName(lines[0]) : null;
 }
 
 export function addDetection(list: DetectedGuild[], name: string): DetectedGuild[] {

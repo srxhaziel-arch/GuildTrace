@@ -36,11 +36,12 @@ Object.defineProperty(navigator.mediaDevices, 'getDisplayMedia', {value: async (
     ctx.fillStyle = '#f3f3f3'; ctx.font = '48px Arial';
     ctx.fillText((labelled ? 'Gremio: ' : '') + name, 150, 240);
   };
-  window.__setSmallCaptureText = (name) => {
+  window.__setSmallCaptureText = (name, labelled = false) => {
     ctx.fillStyle = '#18261d'; ctx.fillRect(0, 0, 1280, 720);
     ctx.fillStyle = '#25221e'; ctx.fillRect(110, 180, 460, 120);
     ctx.strokeStyle = '#6a5737'; ctx.strokeRect(110, 180, 460, 120);
     ctx.fillStyle = '#ded4ba'; ctx.font = '18px Georgia';
+    if (labelled) ctx.fillText('Gremio:', 150, 210);
     ctx.fillText(name, 150, 240);
   };
   window.__setCaptureText('take care');
@@ -152,6 +153,20 @@ with sync_playwright() as playwright:
     expect(page.locator('.detected-name')).to_have_count(4, timeout=20000)
     print('Small serif text on a dark tooltip, name-only crop and real OCR OK', flush=True)
     expect(page.locator('.detected-name').nth(3)).to_have_value('pivas')
+    expect(page.get_by_role('region', name='Ampliación de la zona que lee el escáner', exact=True)).to_be_visible()
+    # Including a label in the name crop must still identify the owner.
+    page.evaluate("window.__setSmallCaptureText('pivas', true)")
+    expect(page.locator('.reading-result pre')).to_contain_text('Gremio', timeout=20000)
+    expect(page.get_by_role('button', name='Añadir a la lista para revisar', exact=True)).to_be_disabled()
+    expect(page.locator('.detected-name')).to_have_count(4)
+    # Explicitly accepting a reading must work even after removing a detection.
+    page.get_by_role('button', name='Quitar pivas', exact=True).click()
+    expect(page.locator('.detected-name')).to_have_count(3)
+    page.get_by_role('button', name='Añadir a la lista para revisar', exact=True).click()
+    expect(page.locator('.detected-name')).to_have_count(4)
+    expect(page.get_by_role('checkbox', name='Revisado: pivas', exact=True)).not_to_be_checked()
+    assert not writes, 'Accepting an OCR reading must not write to the database'
+    page.get_by_role('button', name='Continuar lectura', exact=True).click()
     page.get_by_role('button', name='Pausar lectura', exact=True).click()
     page.get_by_label('Guardar en el mapa', exact=True).fill('Avalanche Incline')
     save_button = page.get_by_role('button', name='Guardar 4 gremios', exact=True)
