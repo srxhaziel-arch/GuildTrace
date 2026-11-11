@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PSM, Worker } from 'tesseract.js';
-import { captureFrame, createOcrWorker } from './ocr';
+import { captureFrame, createFrameSignature, createOcrWorker, nextScanDelay } from './ocr';
 import { extractGuildName, guildKey, type CaptureRegion } from './screen-reader';
 
 type Phase = 'idle' | 'requesting' | 'loading' | 'active' | 'paused' | 'error';
@@ -19,6 +19,7 @@ export function useScreenCapture(settings: Settings, onDetected: (name: string) 
   const [status, setStatus] = useState('Comparte la ventana de Albion para empezar.');
   const [error, setError] = useState('');
   const [aspect, setAspect] = useState(16 / 9);
+  const [reading, setReading] = useState<{ text: string; candidate: string | null; duration: number } | null>(null);
   const supported = !!navigator.mediaDevices?.getDisplayMedia && window.isSecureContext;
 
   useEffect(() => { config.current = settings; detect.current = onDetected; }, [settings, onDetected]);
@@ -57,11 +58,12 @@ export function useScreenCapture(settings: Settings, onDetected: (name: string) 
     dispose();
     const session = generation.current;
     setError('');
+    setReading(null);
     setPhase('requesting');
     setStatus('Selecciona la ventana del juego en el navegador.');
     try {
       // This must run directly in the click handler, before loading OCR assets.
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 5 }, audio: false });
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 30, max: 30 } }, audio: false });
       if (session !== generation.current) { stream.getTracks().forEach((track) => track.stop()); return; }
       streamRef.current = stream;
       const track = stream.getVideoTracks()[0];
@@ -91,11 +93,14 @@ export function useScreenCapture(settings: Settings, onDetected: (name: string) 
       setPhase('active');
       setStatus('Pasa el cursor por un HO y mantenlo unos segundos sobre su información.');
       const canvas = document.createElement('canvas');
+      const signatureOf = createFrameSignature();
       let previous = '';
       let repeats = 0;
       let previousConfig = '';
       let previousMode = '';
       let failures = 0;
+      let scanDuration = 0;
+      let cached: { signature: number; mode: string; fingerprint: string; text: string; confidence: number } | null = null;
 
       async function scan() {
         if (session !== generation.current) return;
@@ -111,11 +116,25 @@ export function useScreenCapture(settings: Settings, onDetected: (name: string) 
               await worker.setParameters({ tessedit_pageseg_mode: mode as PSM, preserve_interword_spaces: '1' });
               previousMode = mode;
             }
-            const result = await worker.recognize(canvas);
+            const signature = signatureOf(canvas);
+            let text: string;
+            let confidence: number;
+            const started = performance.now();
+            if (signature !== null && cached?.signature === signature && cached.mode === mode && cached.fingerprint === fingerprint) {
+              ({ text, confidence } = cached);
+            } else {
+              const result = await worker.recognize(canvas);
+              text = result.data.text;
+              confidence = result.data.confidence;
+              cached = signature === null ? null : { signature, mode, fingerprint, text, confidence };
+            }
+            scanDuration = performance.now() - started;
             if (session !== generation.current) return;
             failures = 0;
             if (!paused.current && fingerprint === JSON.stringify(config.current)) {
-              const name = result.data.confidence >= 40 ? extractGuildName(result.data.text, snapshot.nameOnly && !!snapshot.region) : null;
+              const name = confidence >= 40 ? extractGuildName(text, snapshot.nameOnly && !!snapshot.region) : null;
+              const readableText = text.trim().slice(0, 1200);
+              setReading((last) => last?.text === readableText && last.candidate === name ? last : { text: readableText, candidate: name, duration: Math.round(scanDuration) });
               if (name) {
                 repeats = guildKey(name) === previous ? repeats + 1 : 1;
                 previous = guildKey(name);
@@ -123,7 +142,7 @@ export function useScreenCapture(settings: Settings, onDetected: (name: string) 
                 else setStatus(`Comprobando: ${name}… Mantén el cursor sobre el HO.`);
               } else {
                 previous = ''; repeats = 0;
-                setStatus('Buscando el nombre del gremio… Si no aparece, marca su zona en la imagen.');
+                setStatus(snapshot.region && snapshot.nameOnly ? 'No se pudo leer un nombre claro en la zona. Ajústala para incluir solo el texto.' : 'No se identificó un gremio. Pulsa «Marcar nombre» y encierra solo su texto.');
               }
             }
           }
@@ -137,7 +156,7 @@ export function useScreenCapture(settings: Settings, onDetected: (name: string) 
             return;
           }
         }
-        if (session === generation.current) timer.current = setTimeout(() => void scan(), 900);
+        if (session === generation.current) timer.current = setTimeout(() => void scan(), nextScanDelay(scanDuration, !!config.current.region));
       }
       void scan();
     } catch (cause) {
@@ -153,5 +172,5 @@ export function useScreenCapture(settings: Settings, onDetected: (name: string) 
     }
   }
 
-  return { videoRef, phase, status, error, aspect, supported, start, stop, pause, resume };
+  return { videoRef, phase, status, error, reading, aspect, supported, start, stop, pause, resume };
 }

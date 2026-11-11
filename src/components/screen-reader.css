@@ -29,6 +29,7 @@
 .reader-instructions summary { cursor: pointer; color: #bcc8d6; }
 .reader-instructions ul { padding-left: 18px; margin-bottom: 0; }
 .reader-instructions li + li { margin-top: 7px; }
+.reading-result pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #0b121a; padding: 10px; border-radius: 6px; max-height: 160px; overflow: auto; color: #ced7e2; }
 .detected-description { color: var(--muted); font-size: 11px; line-height: 1.6; margin: -5px 0 16px; }
 .detected-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
 .detected-list { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; scrollbar-color: #354250 var(--surface); }

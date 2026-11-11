@@ -81,6 +81,7 @@ export default function ScreenReader({ maps, online, onSave }: Props) {
   function finishSelection() {
     if (!selection || selection.width < .015 || selection.height < .015) return;
     setRegion(selection);
+    setNameOnly(true);
     setSelecting(false);
   }
 
@@ -140,15 +141,16 @@ export default function ScreenReader({ maps, online, onSave }: Props) {
               <button className="secondary-button" onClick={capture.phase === 'paused' ? capture.resume : capture.pause} disabled={starting || saving || selecting}>{capture.phase === 'paused' ? <Play size={15} /> : <Pause size={15} />}{capture.phase === 'paused' ? 'Continuar lectura' : 'Pausar lectura'}</button>
               <button className="clear-button" onClick={() => { capture.stop(); setSelecting(false); setRegion(null); setNameOnly(false); }} disabled={saving}><Square size={13} /> Detener captura</button>
             </> : <button className="primary-button" onClick={() => void capture.start()} disabled={!capture.supported || starting || saving}>{starting ? <Loader2 size={16} className="spin" /> : <MonitorUp size={17} />}{starting ? 'Esperando selección…' : 'Compartir ventana'}</button>}
-            {sharing && !starting && !selecting && <button className="clear-button" onClick={beginSelection} disabled={saving}><Crop size={15} />{region ? 'Cambiar zona' : 'Seleccionar zona'}</button>}
+            {sharing && !starting && !selecting && <button className={region ? 'clear-button' : 'primary-button'} onClick={beginSelection} disabled={saving}><Crop size={15} />{region ? 'Cambiar zona' : 'Marcar nombre'}</button>}
             {selecting && <><button className="primary-button" onClick={finishSelection} disabled={!selection || selection.width < .015 || selection.height < .015}>Usar zona</button><button className="clear-button" onClick={() => setSelecting(false)}>Cancelar selección</button></>}
           </div>
-          {selecting && <p className="capture-help">Marca el texto en la imagen y pulsa «Usar zona». Con teclado: flechas para mover, Mayúsculas + flechas para ajustar el tamaño.</p>}
+          {selecting && <p className="capture-help">Encierra solo las letras del nombre, dejando un pequeño margen, y pulsa «Usar zona». No incluyas el resto del mapa. Con teclado: flechas para mover, Mayúsculas + flechas para ajustar el tamaño.</p>}
           {sharing && region && !selecting && <div className="capture-region-options"><label><input type="checkbox" checked={nameOnly} onChange={(event) => setNameOnly(event.target.checked)} disabled={saving} />La zona contiene solo el nombre del gremio</label><button className="clear-button" onClick={() => { setRegion(null); setNameOnly(false); }} disabled={saving}>Leer toda la ventana</button></div>}
           <p className="capture-status" role="status"><ScanLine size={16} />{capture.phase === 'paused' ? 'Lectura pausada. Puedes revisar la lista o continuar con otro HO.' : capture.status}</p>
           {capture.error && <p className="reader-error" role="alert">{capture.error}</p>}
+          {capture.reading && <details className="reader-instructions reading-result"><summary>Ver qué texto está leyendo</summary><p>{capture.reading.candidate ? `Nombre reconocido: ${capture.reading.candidate}` : 'Todavía no se reconoció un nombre. Este es el texto que pudo leer:'}</p><pre>{capture.reading.text || 'No se encontró texto legible.'}</pre></details>}
           {!capture.supported && <p className="reader-error">La captura de ventanas requiere un navegador compatible en un ordenador. Prueba Chrome o Edge con la web abierta mediante HTTPS.</p>}
-          <details className="reader-instructions"><summary>Consejos para que lea mejor</summary><ul><li>Comparte la ventana de Albion y deja visible la información del HO durante unos segundos.</li><li>La lectura automática busca «Gremio», «Guild», «Propietario» u «Owner» junto al nombre.</li><li>Si el nombre aparece sin etiqueta, selecciona su zona y activa «La zona contiene solo el nombre del gremio».</li><li>Si la información cambia de lugar, vuelve a marcar la zona. Aumentar el tamaño de la interfaz del juego también puede ayudar.</li></ul></details>
+          <details className="reader-instructions"><summary>Consejos para que lea mejor</summary><ul><li>Comparte la ventana de Albion y deja visible la información del HO durante unos segundos.</li><li>Si no detecta el gremio, pulsa «Marcar nombre» y selecciona solo sus letras. Este modo funciona sin «Gremio» ni «Owner» delante.</li><li>Si seleccionas un cuadro que también tiene etiquetas y otros datos, desactiva «La zona contiene solo el nombre del gremio».</li><li>Si la información cambia de lugar, vuelve a marcar la zona. Aumentar el tamaño de la interfaz del juego también puede ayudar.</li></ul></details>
         </section>
         <section className="reader-panel detected-panel" aria-labelledby="detected-title">
           <div className="reader-panel-heading"><h3 id="detected-title">Gremios detectados <span className="field-count">{guilds.length}</span></h3></div>

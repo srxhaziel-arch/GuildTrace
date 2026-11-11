@@ -15,7 +15,16 @@ VIDEO_FIXTURE = """
 window.__streams = [];
 window.__shareCalls = 0;
 window.__shareDenied = false;
-Object.defineProperty(navigator.mediaDevices, 'getDisplayMedia', {value: async () => {
+window.__ocrCalls = 0;
+const OriginalWorker = window.Worker;
+window.Worker = class extends OriginalWorker {
+  postMessage(message, ...args) {
+    if (message.action === 'recognize') window.__ocrCalls++;
+    return super.postMessage(message, ...args);
+  }
+};
+Object.defineProperty(navigator.mediaDevices, 'getDisplayMedia', {value: async (constraints) => {
+  window.__captureConstraints = constraints;
   window.__shareCalls++;
   if (window.__shareDenied) throw new DOMException('Cancelled', 'NotAllowedError');
   const canvas = document.createElement('canvas');
@@ -27,11 +36,18 @@ Object.defineProperty(navigator.mediaDevices, 'getDisplayMedia', {value: async (
     ctx.fillStyle = '#f3f3f3'; ctx.font = '48px Arial';
     ctx.fillText((labelled ? 'Gremio: ' : '') + name, 150, 240);
   };
+  window.__setSmallCaptureText = (name) => {
+    ctx.fillStyle = '#18261d'; ctx.fillRect(0, 0, 1280, 720);
+    ctx.fillStyle = '#25221e'; ctx.fillRect(110, 180, 460, 120);
+    ctx.strokeStyle = '#6a5737'; ctx.strokeRect(110, 180, 460, 120);
+    ctx.fillStyle = '#ded4ba'; ctx.font = '18px Georgia';
+    ctx.fillText(name, 150, 240);
+  };
   window.__setCaptureText('take care');
-  const stream = canvas.captureStream(5);
+  const stream = canvas.captureStream(30);
   const animate = () => {
     if (stream.getVideoTracks()[0].readyState === 'live') {
-      ctx.fillRect(0, 0, 1, 1); setTimeout(animate, 100);
+      ctx.fillRect(0, 0, 1, 1); setTimeout(animate, 33);
     }
   };
   animate();
@@ -95,9 +111,12 @@ with sync_playwright() as playwright:
         print('OCR FAILURE', page.locator('.screen-reader').inner_text(), errors, ocr_requests, flush=True)
         raise
     print('Real OCR detected first guild', flush=True)
+    assert page.evaluate('window.__captureConstraints.video.frameRate.ideal') == 30
     expect(page.locator('.detected-name').first).to_have_value('take care')
     page.wait_for_timeout(2500)
     expect(page.locator('.detected-name')).to_have_count(1)
+    assert page.evaluate('window.__ocrCalls') == 1, 'Static captures must not continually repeat expensive OCR'
+    assert page.evaluate("document.querySelector('video').getVideoPlaybackQuality().totalVideoFrames") > 20, 'Preview must keep playing while OCR runs'
     assert not writes, 'Detection must never save automatically'
 
     page.get_by_role('button', name='Pausar lectura', exact=True).click()
@@ -121,17 +140,17 @@ with sync_playwright() as playwright:
     print('Draft restoration and restarted capture OK', flush=True)
 
     # Choose a name-only crop, including a real OCR pass with no label.
-    page.get_by_role('button', name='Seleccionar zona', exact=True).click()
+    page.get_by_role('button', name='Marcar nombre', exact=True).click()
     preview = page.locator('.capture-preview').bounding_box()
     page.mouse.move(preview['x']+preview['width']*.09, preview['y']+preview['height']*.24)
     page.mouse.down()
     page.mouse.move(preview['x']+preview['width']*.7, preview['y']+preview['height']*.4)
     page.mouse.up()
     page.get_by_role('button', name='Usar zona', exact=True).click()
-    page.get_by_label('La zona contiene solo el nombre del gremio', exact=True).check()
-    page.evaluate("window.__setCaptureText('pivas', false)")
+    expect(page.get_by_label('La zona contiene solo el nombre del gremio', exact=True)).to_be_checked()
+    page.evaluate("window.__setSmallCaptureText('pivas')")
     expect(page.locator('.detected-name')).to_have_count(4, timeout=20000)
-    print('Name-only crop and real OCR OK', flush=True)
+    print('Small serif text on a dark tooltip, name-only crop and real OCR OK', flush=True)
     expect(page.locator('.detected-name').nth(3)).to_have_value('pivas')
     page.get_by_role('button', name='Pausar lectura', exact=True).click()
     page.get_by_label('Guardar en el mapa', exact=True).fill('Avalanche Incline')
