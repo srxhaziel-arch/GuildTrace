@@ -729,13 +729,6 @@ button:disabled { transform: none; }
   .skeleton-button { width: 100%; }
 }
 
-.view-tabs { display: flex; justify-content: center; gap: 5px; flex-wrap: wrap; margin: 20px 0 0; }
-.view-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid transparent; border-radius: 8px; padding: 9px 13px; background: transparent; color: var(--muted); font-size: 12px; min-height: 38px; }
-.view-tabs button.is-active { background: #d4ad4c0c; border-color: #d4ad4c35; color: var(--gold); }
-.view-tabs button:hover:not(:disabled) { color: var(--text); }
-.reader-loading { text-align: center; color: var(--muted); font-size: 13px; padding: 60px 0; }
-@media (max-width: 620px) { .view-tabs button { min-height: 44px; font-size: 11px; padding: 9px 10px; } }
-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
   .skeleton { animation: none; background: #202d3a; }

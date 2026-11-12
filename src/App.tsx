@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Check,
   WifiOff,
@@ -6,14 +6,10 @@ import {
   Pencil,
   Plus,
   Search,
-  ScanLine,
   Trash2,
   X,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { guildKey } from '@/lib/screen-reader';
-
-const ScreenReader = lazy(() => import('@/components/ScreenReader'));
 
 type Guild = { name: string };
 type MapEntry = {
@@ -58,7 +54,6 @@ function LoadingMaps() {
 }
 
 function App() {
-  const [view, setView] = useState<'maps' | 'reader'>('maps');
   const [data, setData] = useState<MapEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -121,7 +116,6 @@ function App() {
       return matchesMap || visibleGuilds.length ? [{ ...item, visibleGuilds }] : [];
     });
   }, [data, search]);
-  const knownGuildNames = useMemo(() => [...new Set(data.flatMap((item) => item.guilds.map((guild) => guild.name)))], [data]);
 
   const loadAll = useCallback(async () => {
     const { data: rows, error } = await supabase
@@ -326,44 +320,6 @@ function App() {
     await loadAll();
   }
 
-  async function saveCapturedGuilds(requestedMap: string, names: string[]) {
-    if (busy || !online) throw new Error('No se puede guardar ahora');
-    const map = data.find((item) => guildKey(item.map) === guildKey(requestedMap))?.map ?? requestedMap.trim();
-    if (!map || !names.length || names.some((name) => !name.trim())) throw new Error('Datos incompletos');
-    setSaving(true);
-    try {
-      // Append only. Never replace the guilds already stored for the target map.
-      const { data: existing, error: lookupError } = await supabase.from('mapas_hideouts')
-        .select('guild_name').eq('map', map).eq('radar', RADAR_KEY);
-      if (lookupError) throw lookupError;
-      const known = new Set((existing ?? []).map((row) => guildKey(row.guild_name ?? '')));
-      const toAdd: string[] = [];
-      for (const name of names) {
-        const key = guildKey(name);
-        if (known.has(key)) continue;
-        known.add(key);
-        toAdd.push(name.trim());
-      }
-      if (toAdd.length) {
-        const { error } = await supabase.from('mapas_hideouts').insert(toAdd.map((name) => ({
-          map, guild_name: name, guild_type: 'HO', alliance_name: null, tier: null, calidad: null,
-          lastEdited: new Date().toLocaleString('es-ES'), radar: RADAR_KEY,
-        })));
-        if (error) throw error;
-      }
-      setSaveStatus('saved');
-      await loadAll();
-      return { added: toAdd.length, skipped: names.length - toAdd.length };
-    } finally { setSaving(false); }
-  }
-
-  function switchView(next: 'maps' | 'reader') {
-    if (busy || !canLeaveForm()) return;
-    clearForm();
-    exitSelectMode();
-    setView(next);
-  }
-
   function exitSelectMode() {
     setSelected(new Set());
     setSelectMode(false);
@@ -479,10 +435,6 @@ function App() {
             </div>
           )}
         </header>
-        <nav className="view-tabs" aria-label="Apartados de GuildTrace">
-          <button className={view === 'maps' ? 'is-active' : ''} aria-current={view === 'maps' ? 'page' : undefined} onClick={() => switchView('maps')} disabled={busy}>Mapas y gremios</button>
-          <button className={view === 'reader' ? 'is-active' : ''} aria-current={view === 'reader' ? 'page' : undefined} onClick={() => switchView('reader')} disabled={busy}><ScanLine size={16} />Leer desde el juego</button>
-        </nav>
         {(!online || dataError) && (
           <div className="connection-banner" role="status">
             <span>{!online ? 'Sin conexión. Conservamos tu edición abierta; no cierres esta pestaña. Guardar y eliminar estarán disponibles al reconectar.' : 'No se pudieron actualizar los mapas. Se muestran los últimos datos cargados.'}</span>
@@ -490,11 +442,6 @@ function App() {
           </div>
         )}
 
-        {view === 'reader' ? (
-          <Suspense fallback={<p className="reader-loading" role="status">Cargando lector de pantalla…</p>}>
-            <ScreenReader maps={data.map((item) => item.map)} knownGuildNames={knownGuildNames} online={online} onSave={saveCapturedGuilds} />
-          </Suspense>
-        ) : <>
         <section className="page-heading" aria-label="Resumen de mapas y gremios">
           <div className="heading-tools">
             <div className="summary-stats" role="status" aria-label="Resumen de resultados">
@@ -633,7 +580,6 @@ function App() {
             )}
           </div>
         </section>
-        </>}
       </main>
       <dialog
         ref={editorDialog}
