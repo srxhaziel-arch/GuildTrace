@@ -23,7 +23,7 @@ export function captureFrame(video: HTMLVideoElement, canvas: HTMLCanvasElement,
   const width = source.width * video.videoWidth;
   const height = source.height * video.videoHeight;
   // Upscale a selected name for small game fonts; cap work for full-window capture.
-  const scale = region ? Math.min(4, 1100 / width, Math.sqrt(400_000 / (width * height))) : Math.min(1, 1920 / width);
+  const scale = region ? Math.min(6, 1100 / width, Math.sqrt(400_000 / (width * height))) : Math.min(1, 1920 / width);
   const targetWidth = Math.max(1, Math.floor(width * scale));
   const targetHeight = Math.max(1, Math.floor(height * scale));
   if (canvas.width !== targetWidth) canvas.width = targetWidth;

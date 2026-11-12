@@ -2,6 +2,23 @@ export type CaptureRegion = { x: number; y: number; width: number; height: numbe
 export type DetectedGuild = { id: string; name: string; reviewed: boolean };
 export const guildKey = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
 
+/** Match OCR headings to existing names without renaming the stored guild. */
+export function matchKnownGuild(text: string, names: readonly string[]): string | null {
+  const compact = (name: string) => name.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+  const headings = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).slice(0, 2)
+    .filter((line) => !/^(?:escondite|hideout|nivel|level|puntos|points|estado|status|protecci[oó]n|protection)(?:\s|:)/i.test(line));
+  const matches = new Map<string, string>();
+  for (const name of names) {
+    const key = compact(name);
+    if (!key) continue;
+    if (headings.some((line) => {
+      const heading = compact(line.replace(/^\[[^\]]{1,20}\]\s*/, '').replace(label, ''));
+      return heading === key || key.length >= 4 && heading.endsWith(key) && heading.length - key.length <= 12;
+    })) matches.set(guildKey(name), name);
+  }
+  return matches.size === 1 ? [...matches.values()][0] : null;
+}
+
 const label = /^(?:gremio|guild(?:\s+name)?|propietario|owner|owned\s+by|pertenece\s+a)(?=\s|[:：\-–]|$)\s*[:：\-–]?\s*/i;
 const ignored = /^(?:alianza|alliance|escondite|hideout|nivel|level|propietario|owner|gremio|guild|territorio|territory|durabilidad|durability|comida|food|poder|power|protecci[oó]n|protection|atacar|attack|entrar|enter|acceso|access|construcci[oó]n|construction|mapa|map)(?:\s*[:：]|\s*$)/i;
 
@@ -23,7 +40,7 @@ export function extractGuildName(text: string, nameOnly = false): string | null 
   }
   // Multiple different owners in the same frame are ambiguous.
   if (candidates.size) return candidates.size === 1 ? [...candidates][0] : null;
-  return nameOnly && lines.length === 1 ? cleanName(lines[0]) : null;
+  return nameOnly && lines.length === 1 ? cleanName(lines[0].replace(/^\[[^\]]{1,20}\]\s*/, '')) : null;
 }
 
 export function addDetection(list: DetectedGuild[], name: string): DetectedGuild[] {

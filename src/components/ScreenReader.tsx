@@ -7,11 +7,12 @@ import './screen-reader.css';
 
 type Props = {
   maps: string[];
+  knownGuildNames: readonly string[];
   online: boolean;
   onSave: (map: string, names: string[]) => Promise<{ added: number; skipped: number }>;
 };
 
-export default function ScreenReader({ maps, online, onSave }: Props) {
+export default function ScreenReader({ maps, knownGuildNames, online, onSave }: Props) {
   const [draft] = useState(readCaptureDraft);
   const [guilds, setGuilds] = useState<DetectedGuild[]>(draft.guilds);
   const [map, setMap] = useState(draft.map);
@@ -31,7 +32,7 @@ export default function ScreenReader({ maps, online, onSave }: Props) {
     seenNames.current.add(key);
     setGuilds((previous) => previous.length < 200 ? addDetection(previous, name) : previous);
   }, []);
-  const capture = useScreenCapture({ region, nameOnly, selecting }, onDetected);
+  const capture = useScreenCapture({ region, nameOnly, selecting, knownGuilds: knownGuildNames }, onDetected);
   const sharing = ['loading', 'active', 'paused'].includes(capture.phase);
   const starting = ['requesting', 'loading'].includes(capture.phase);
   const duplicate = guilds.some((guild, index) => guilds.findIndex((other) => guildKey(other.name) === guildKey(guild.name)) !== index);
@@ -117,24 +118,24 @@ export default function ScreenReader({ maps, online, onSave }: Props) {
     } finally { setSaving(false); }
   }
 
-  const activeRegion = selecting ? selection : region;
+  const activeRegion = selecting ? selection : region ?? capture.autoRegion;
   return (
     <section className="screen-reader" aria-labelledby="reader-title">
       <div className="reader-heading">
         <div className="eyebrow">LECTURA DE PANTALLA · PRUEBA</div>
         <h2 id="reader-title">Leer gremios desde Albion</h2>
-        <p>Comparte la ventana del juego y pasa el cursor por cada HO. Los nombres se añaden a la misma lista.</p>
+        <p>Comparte la ventana del juego y pasa el cursor por cada HO. El lector intentará enfocar su recuadro automáticamente.</p>
       </div>
       <div className="reader-layout">
         <section className="reader-panel capture-panel" aria-labelledby="capture-title">
           <div className="reader-panel-heading">
             <h3 id="capture-title">Ventana compartida</h3>
-            <span className={`capture-badge ${sharing ? 'is-sharing' : ''}`}><i />{capture.phase === 'active' ? 'Leyendo' : capture.phase === 'paused' ? 'Lectura pausada' : capture.phase === 'loading' ? 'Preparando lector' : 'Sin captura'}</span>
+            <span className={`capture-badge ${sharing ? 'is-sharing' : ''}`}><i />{capture.phase === 'active' ? capture.autoRegion ? 'HO enfocado' : 'Lector activo' : capture.phase === 'paused' ? 'Lectura pausada' : capture.phase === 'loading' ? 'Preparando lector' : 'Sin captura'}</span>
           </div>
           <div ref={stage} className={`capture-preview ${selecting ? 'is-selecting' : ''}`} style={{ aspectRatio: capture.aspect }} tabIndex={selecting ? 0 : -1} role="group" aria-label="Vista de la ventana compartida. Para seleccionar: arrastra un rectángulo, o mueve con flechas, cambia tamaño con Mayúsculas y flechas y confirma con Enter." onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={() => { dragOrigin.current = null; }} onPointerCancel={() => { dragOrigin.current = null; }} onKeyDown={keySelection}>
             <video ref={capture.videoRef} autoPlay muted playsInline aria-label="Ventana del juego compartida" />
             {!sharing && <div className="capture-empty"><MonitorUp size={42} strokeWidth={1.2} /><strong>Tu ventana de Albion aparecerá aquí</strong><span>Abre el mapa del juego y muestra la información de un HO al pasar el cursor.</span></div>}
-            {sharing && activeRegion && <div className="capture-region" style={{ left: `${activeRegion.x * 100}%`, top: `${activeRegion.y * 100}%`, width: `${activeRegion.width * 100}%`, height: `${activeRegion.height * 100}%` }}><span>{nameOnly ? 'Solo nombre' : 'Zona de lectura'}</span></div>}
+            {sharing && activeRegion && <div className="capture-region" style={{ left: `${activeRegion.x * 100}%`, top: `${activeRegion.y * 100}%`, width: `${activeRegion.width * 100}%`, height: `${activeRegion.height * 100}%` }}><span>{!region && capture.autoRegion ? 'HO detectado' : nameOnly ? 'Solo nombre' : 'Zona de lectura'}</span></div>}
           </div>
           <div className="capture-controls">
             {sharing ? <>
@@ -145,8 +146,8 @@ export default function ScreenReader({ maps, online, onSave }: Props) {
             {selecting && <><button className="primary-button" onClick={finishSelection} disabled={!selection || selection.width < .015 || selection.height < .015}>Usar zona</button><button className="clear-button" onClick={() => setSelecting(false)}>Cancelar selección</button></>}
           </div>
           {selecting && <p className="capture-help">Encierra solo las letras del nombre, dejando un pequeño margen, y pulsa «Usar zona». No incluyas el resto del mapa. Con teclado: flechas para mover, Mayúsculas + flechas para ajustar el tamaño.</p>}
-          {sharing && region && !selecting && <div className="capture-region-options"><label><input type="checkbox" checked={nameOnly} onChange={(event) => setNameOnly(event.target.checked)} disabled={saving} />La zona contiene solo el nombre del gremio</label><button className="clear-button" onClick={() => { setRegion(null); setNameOnly(false); }} disabled={saving}>Leer toda la ventana</button></div>}
-          {sharing && region && !selecting && <section className="reading-zoom" aria-label="Ampliación de la zona que lee el escáner"><strong>Esto es lo que está leyendo</strong><canvas ref={capture.readingCanvasRef} aria-label="Zona seleccionada ampliada" /><p>El nombre debe verse completo aquí. Si el recuadro quedó vacío o el texto se movió, pulsa «Cambiar zona».</p></section>}
+          {sharing && region && !selecting && <div className="capture-region-options"><label><input type="checkbox" checked={nameOnly} onChange={(event) => setNameOnly(event.target.checked)} disabled={saving} />La zona contiene solo el nombre del gremio</label><button className="clear-button" onClick={() => { setRegion(null); setNameOnly(false); }} disabled={saving}>Volver al enfoque automático</button></div>}
+          {sharing && activeRegion && !selecting && <section className="reading-zoom" aria-label="Ampliación de la zona que lee el escáner"><strong>Esto es lo que está leyendo</strong><canvas ref={capture.readingCanvasRef} aria-label="Zona seleccionada ampliada" /><p>{region ? 'El recuadro manual es fijo. Si el nombre se mueve, cambia la zona o vuelve al enfoque automático.' : 'Se ha localizado un posible recuadro de HO. Comprueba que la ampliación contenga el nombre del gremio.'}</p></section>}
           <p className="capture-status" role="status"><ScanLine size={16} />{capture.phase === 'paused' ? 'Lectura pausada. Puedes revisar la lista o continuar con otro HO.' : capture.status}</p>
           {capture.error && <p className="reader-error" role="alert">{capture.error}</p>}
           {sharing && capture.reading && <section className="reading-result" aria-label="Texto reconocido"><strong>Texto reconocido</strong><pre>{capture.reading.text || 'Todavía no se detectan letras en esta imagen.'}</pre>{capture.reading.candidate && <button className="secondary-button" disabled={saving || guilds.length >= 200 || guilds.some((guild) => guildKey(guild.name) === guildKey(capture.reading!.candidate!))} onClick={() => {

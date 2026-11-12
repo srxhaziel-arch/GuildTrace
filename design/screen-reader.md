@@ -6,6 +6,16 @@ El vídeo y sus recortes se procesan localmente; solo los nombres revisados se
 envían a la tabla existente `mapas_hideouts` al pulsar Guardar.
 
 La captura requiere HTTPS (o localhost) y un navegador de escritorio compatible.
+Sin recorte manual, se busca un panel oscuro y compacto sobre la superficie
+más clara del mapa mediante una imagen de hasta 640 × 480 píxeles. Su cabecera
+se recorta desde el vídeo original y se amplía hasta 6 veces para el OCR. Esta
+detección visual es una heurística: otros estilos de interfaz, paneles o fondos
+pueden requerir la selección manual, que tiene prioridad sobre el enfoque auto.
+Se buscan coincidencias únicas con los nombres guardados, ignorando espacios
+de OCR y el prefijo de etiqueta entre corchetes. No se corrigen letras distintas.
+Una cabecera desconocida sin etiqueta de propietario se ofrece para revisión
+explícita y no entra automáticamente a la lista de gremios.
+
 La lectura completa busca etiquetas en español o inglés; una zona seleccionada
 se lee por defecto como un nombre, admitiendo también una etiqueta dentro del
 recorte. Un recorte con confianza de OCR alta (70 o más) se añade a la lista

@@ -121,6 +121,7 @@ function App() {
       return matchesMap || visibleGuilds.length ? [{ ...item, visibleGuilds }] : [];
     });
   }, [data, search]);
+  const knownGuildNames = useMemo(() => [...new Set(data.flatMap((item) => item.guilds.map((guild) => guild.name)))], [data]);
 
   const loadAll = useCallback(async () => {
     const { data: rows, error } = await supabase
@@ -491,7 +492,7 @@ function App() {
 
         {view === 'reader' ? (
           <Suspense fallback={<p className="reader-loading" role="status">Cargando lector de pantalla…</p>}>
-            <ScreenReader maps={data.map((item) => item.map)} online={online} onSave={saveCapturedGuilds} />
+            <ScreenReader maps={data.map((item) => item.map)} knownGuildNames={knownGuildNames} online={online} onSave={saveCapturedGuilds} />
           </Suspense>
         ) : <>
         <section className="page-heading" aria-label="Resumen de mapas y gremios">

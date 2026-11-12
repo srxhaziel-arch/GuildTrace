@@ -44,6 +44,18 @@ Object.defineProperty(navigator.mediaDevices, 'getDisplayMedia', {value: async (
     if (labelled) ctx.fillText('Gremio:', 150, 210);
     ctx.fillText(name, 150, 240);
   };
+  window.__setAutoTooltip = (name, x = 550, y = 300) => {
+    ctx.fillStyle = '#b4a9d1'; ctx.fillRect(0,0,1280,720);
+    ctx.fillStyle = '#ceb37c'; ctx.fillRect(100,20,1040,44);
+    ctx.fillStyle = '#30271f'; ctx.font = '18px Georgia'; ctx.fillText('Avalanche Incline',125,49);
+    ctx.fillStyle = '#262a32'; ctx.fillRect(x,y,230,90);
+    ctx.strokeStyle = '#697078'; ctx.strokeRect(x,y,230,90);
+    ctx.fillStyle = '#e2ded5'; ctx.font = 'bold 12px Georgia';
+    ctx.fillText('[KAOS] '+name,x+24,y+18);
+    ctx.font = '9px Georgia'; ctx.fillText('Escondite protector',x+12,y+37);
+    ctx.fillText('Puntos de defensa',x+12,y+57);
+    ctx.fillStyle = '#6687ae'; ctx.fillRect(x+12,y+69,170,7);
+  };
   window.__setCaptureText('take care');
   const stream = canvas.captureStream(30);
   const animate = () => {
@@ -62,7 +74,10 @@ with sync_playwright() as playwright:
     context = browser.new_context(viewport={'width':1440, 'height':1050})
     context.add_init_script(VIDEO_FIXTURE)
     context.route_web_socket('**/realtime/v1/websocket*', lambda ws: None)
-    rows = [{'id':1, 'map':'Avalanche Incline', 'guild_name':'ifures', 'guild_type':'HO', 'radar':'black-zone'}]
+    rows = [
+        {'id':1, 'map':'Avalanche Incline', 'guild_name':'ifures', 'guild_type':'HO', 'radar':'black-zone'},
+        {'id':2, 'map':'Dryvein Cross', 'guild_name':'K PA MI XAN', 'guild_type':'HO', 'radar':'black-zone'},
+    ]
     writes = []
     fail_insert = [True]
     errors = []
@@ -189,7 +204,7 @@ with sync_playwright() as playwright:
     save_button.click()
     expect(page.get_by_text('3 gremios añadidos', exact=False)).to_be_visible()
     expect(page.locator('.detected-name')).to_have_count(0)
-    assert [row['guild_name'] for row in rows] == ['ifures','take care','darkmight','pivas']
+    assert [row['guild_name'] for row in rows if row['map']=='Avalanche Incline'] == ['ifures','take care','darkmight','pivas']
 
     # Browser-level Stop sharing event also tears down capture.
     page.evaluate("window.__streams.at(-1).getVideoTracks()[0].dispatchEvent(new Event('ended'))")
@@ -200,6 +215,29 @@ with sync_playwright() as playwright:
     page.get_by_role('button', name='Compartir ventana', exact=True).click()
     expect(page.get_by_text('No se inició la captura.', exact=False)).to_be_visible()
     expect(page.get_by_role('button', name='Compartir ventana', exact=True)).to_be_enabled()
+
+    # A moving game-style tooltip is focused without a manually selected crop.
+    number_of_writes = len(writes)
+    page.evaluate('window.__shareDenied = false')
+    page.get_by_role('button', name='Compartir ventana', exact=True).click()
+    page.evaluate("window.__setAutoTooltip('K PA MI XAN')")
+    expect(page.locator('.detected-name')).to_have_count(1, timeout=60000)
+    expect(page.locator('.detected-name').first).to_have_value('K PA MI XAN')
+    expect(page.get_by_text('HO detectado',exact=True)).to_be_visible()
+    old_left = page.locator('.capture-region').evaluate('(el) => el.style.left')
+    page.evaluate("window.__setAutoTooltip('ifures', 820, 420)")
+    try:
+        expect(page.locator('.detected-name')).to_have_count(2, timeout=20000)
+    except Exception:
+        page.screenshot(path=str(ARTIFACTS/'auto-failure.png'),full_page=True)
+        print('AUTO FAILURE',page.locator('.screen-reader').inner_text(),flush=True)
+        raise
+    expect(page.locator('.detected-name').nth(1)).to_have_value('ifures')
+    assert old_left != page.locator('.capture-region').evaluate('(el) => el.style.left')
+    assert len(writes) == number_of_writes
+    page.screenshot(path=str(ARTIFACTS/'ho-automatico.png'),full_page=True)
+    page.get_by_role('button',name='Detener captura',exact=True).click()
+    print('Automatic tooltip focus, moving panel and K PA MI XAN without alliance prefix OK',flush=True)
 
     page.set_viewport_size({'width':390,'height':1000})
     assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
